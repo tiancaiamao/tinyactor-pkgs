@@ -1,0 +1,15 @@
+// smoke.ta has four verdicts: PASS, FAIL, SKIP (known missing runtime prerequisite), UNKNOWN.
+import markdown
+import html
+import os
+
+fn main() {
+  match markdown.parse("# hello") {
+    Err(_) -> { print("FAIL markdown parse"); os.exit(1) }
+    Ok(nodes) -> {
+      let rendered = html.render_list(nodes)
+      if rendered == "<h1>hello</h1>" { print("PASS markdown + html.Node") }
+      else { print("FAIL markdown rendering"); os.exit(1) }
+    }
+  }
+}

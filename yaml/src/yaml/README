@@ -1,0 +1,10 @@
+Vendored upstream: libyaml 0.2.5
+Source: https://github.com/yaml/libyaml (release 0.2.5)
+
+Copied from the core repository's `std-batch6-docs` branch. The vendored
+files are unchanged; local modifications: zero.
+
+License: MIT. See `LICENSE` for the upstream license text.
+
+The package builds parser.c, reader.c, scanner.c, and api.c. The api.c
+build supplies the release version macros required by libyaml.

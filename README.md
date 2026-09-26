@@ -13,7 +13,7 @@ artifacts into your project's `lib/`).
 |---|---|---|
 | `_template/` | minimal C-module template (smoke test with four-state verdict) | — |
 | `sqlite` | implemented — system SQLite wrapper, CRUD smoke/tests | T1 |
-| `markdown` (md4c) | planned — extraction from core branch `std-batch6-docs` | T1 |
-| `yaml` (libyaml) | planned — same | T1 |
+| `markdown` | implemented — md4c 0.5.2 vendored dynamic module; returns `html.Node` | T1 |
+| `yaml` | implemented — libyaml 0.2.5 vendored dynamic module | T1 |
 | `queue` / `deque` / `priority_queue` | planned (pure ta) | T1 |
 | `sdl` | planned (SDL2) | T1 |

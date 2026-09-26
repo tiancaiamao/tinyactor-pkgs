@@ -1,2 +1,2 @@
 *.dylib
-*.so
+*.so*.tmp
