@@ -16,4 +16,4 @@ artifacts into your project's `lib/`).
 | `markdown` (md4c) | planned — extraction from core branch `std-batch6-docs` | T1 |
 | `yaml` (libyaml) | planned — same | T1 |
 | `queue` / `deque` / `priority_queue` | planned (pure ta) | T1 |
-| `sdl` | planned (SDL2) | T1 |
+| `sdl` | implemented — SDL2 wrapper, headless smoke/tests | T1 |

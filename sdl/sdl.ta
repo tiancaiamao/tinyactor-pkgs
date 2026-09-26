@@ -1,0 +1,55 @@
+// SDL2 package API: intentionally limited to lifecycle, a basic window, and
+// event pumping. Window is a mutable opaque handle: C operations act on the
+// same SDL_Window; callers must destroy it explicitly. Actor exit can leak it.
+import option
+import result
+
+type Window { WindowHandle(int) }
+
+external fn sdl.raw_init() -> int
+external fn sdl.raw_error() -> string
+external fn sdl.raw_create_window(string, int, int) -> int
+external fn sdl.raw_destroy_window(int) -> int
+external fn sdl.raw_poll_event() -> int
+external fn sdl.raw_delay(int) -> int
+external fn sdl.raw_quit() -> int
+
+pub fn init() -> Result(unit, string) {
+  match sdl.raw_init() {
+    -1 -> Err(sdl.raw_error())
+    _ -> Ok(())
+  }
+}
+pub fn create_window(title: string, width: int, height: int) -> Result(Window, string) {
+  match sdl.raw_create_window(title, width, height) {
+    -1 -> Err(sdl.raw_error())
+    handle -> Ok(WindowHandle(handle))
+  }
+}
+pub fn destroy_window(window: Window) -> Result(unit, string) {
+  match window {
+    WindowHandle(handle) -> match sdl.raw_destroy_window(handle) {
+      -1 -> Err("window destroy failed")
+      _ -> Ok(())
+    }
+  }
+}
+// Returns Some(event type) or None when the queue is empty.
+pub fn poll_event() -> Option(int) {
+  match sdl.raw_poll_event() {
+    0 -> None
+    event_type -> Some(event_type)
+  }
+}
+pub fn delay(milliseconds: int) -> Result(unit, string) {
+  match sdl.raw_delay(milliseconds) {
+    -1 -> Err("delay failed")
+    _ -> Ok(())
+  }
+}
+pub fn quit() -> Result(unit, string) {
+  match sdl.raw_quit() {
+    -1 -> Err("quit failed")
+    _ -> Ok(())
+  }
+}

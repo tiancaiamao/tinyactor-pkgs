@@ -1,0 +1,31 @@
+import sdl
+import os
+
+fn fail(message) { print(message); os.exit(1) }
+fn main() {
+  match sdl.init() {
+    Err(_) -> fail("FAIL SDL init")
+    Ok(_) -> 0
+  }
+  match sdl.poll_event() {
+        None -> print("PASS no pending event")
+    Some(_) -> fail("FAIL unexpected event")
+  }
+  match sdl.delay(1) {
+    Err(_) -> fail("FAIL delay")
+    Ok(_) -> print("PASS delay")
+  }
+  match sdl.create_window("tinyactor-sdl-smoke", 64, 64) {
+    Err(_) -> fail("FAIL dummy window")
+    Ok(window) -> {
+      match sdl.destroy_window(window) {
+        Err(_) -> fail("FAIL destroy window")
+        Ok(_) -> print("PASS window lifecycle")
+      }
+    }
+  }
+  match sdl.quit() {
+    Err(_) -> fail("FAIL SDL quit")
+    Ok(_) -> print("PASS SDL smoke")
+  }
+}
