@@ -1,0 +1,28 @@
+import queue
+import option
+import os
+
+fn fail(message : string) -> int { print(message); os.exit(1) }
+fn main() -> int {
+  let q0 = queue.new()
+  if queue.size(q0) != 0 { fail("FAIL queue empty size") }
+    if queue.is_empty(q0) == false { fail("FAIL queue empty predicate") }
+  if option.is_none(queue.peek(q0)) { print("PASS queue empty peek") } else { fail("FAIL queue empty peek") }
+  match queue.pop(q0) { Empty -> print("PASS queue empty pop"); _ -> fail("FAIL queue empty pop") }
+  let q1 = queue.push(queue.push(q0, 1), 2)
+  match queue.pop(q1) {
+        Item(v1, q2) -> {
+      if v1 != 1 { fail("FAIL queue FIFO") }
+      let q3 = queue.push(q2, 3)
+      match queue.pop(q3) {
+        Item(v2, q4) -> {
+          if v2 != 2 { fail("FAIL queue interleave") }
+          match queue.pop(q4) { Item(3, q5) -> if queue.is_empty(q5) { print("PASS queue tests") } else { fail("FAIL queue final empty") }; _ -> fail("FAIL queue final value") }
+        }
+        _ -> fail("FAIL queue second value")
+      }
+    }
+    _ -> fail("FAIL queue first value")
+  }
+  0
+}

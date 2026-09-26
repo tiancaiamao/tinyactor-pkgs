@@ -1,0 +1,41 @@
+// deque: immutable double-ended queue represented as a list in logical
+// front-to-back order. Push/pop at the front are O(1); back operations
+// are O(n) via reversal. Empty pops return Empty; peeks return None.
+//
+// API: new() -> Deque(t); push_front/back(Deque(t), t) -> Deque(t);
+// pop_front/back(Deque(t)) -> Pop(t); peek_front/back(Deque(t)) -> Option(t);
+// size(Deque(t)) -> int; is_empty(Deque(t)) -> bool.
+import option
+import list
+
+pub type Deque(t) { DequeValue(items) }
+pub type Pop(t) { Empty; Item(value, rest) }
+
+pub fn new() -> Deque(t) { DequeValue(nil) }
+pub fn push_front(d : Deque(t), value : t) -> Deque(t) {
+  match d { DequeValue(items) -> DequeValue(cons(value, items)) }
+}
+pub fn push_back(d : Deque(t), value : t) -> Deque(t) {
+  match d { DequeValue(items) -> DequeValue(list.append(items, cons(value, nil))) }
+}
+pub fn pop_front(d : Deque(t)) -> Pop(t) {
+  match d { DequeValue(cons(head, tail)) -> Item(head, DequeValue(tail)); DequeValue(nil) -> Empty }
+}
+pub fn pop_back(d : Deque(t)) -> Pop(t) {
+  match d {
+    DequeValue(items) -> {
+      if null?(items) { Empty } else {
+        let reversed = list.reverse(items)
+        Item(car(reversed), DequeValue(list.reverse(cdr(reversed))))
+      }
+    }
+  }
+}
+pub fn peek_front(d : Deque(t)) -> option.Option(t) {
+  match d { DequeValue(cons(head, _)) -> Some(head); DequeValue(nil) -> None }
+}
+pub fn peek_back(d : Deque(t)) -> option.Option(t) {
+  match d { DequeValue(items) -> if null?(items) { None } else { Some(car(list.reverse(items))) } }
+}
+pub fn size(d : Deque(t)) -> int { match d { DequeValue(items) -> list.length(items) } }
+pub fn is_empty(d : Deque(t)) -> bool { size(d) == 0 }

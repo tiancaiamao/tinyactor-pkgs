@@ -1,0 +1,46 @@
+// queue: immutable FIFO queue using two lists. Push prepends to the rear
+// list; pop reverses rear only when front is empty. Amortized O(1).
+// Empty pop returns Empty; peek returns None. Callers must pattern-match
+// these results rather than relying on a sentinel value.
+//
+// API: new() -> Queue(t); push(Queue(t), t) -> Queue(t);
+// pop(Queue(t)) -> Pop(t); peek(Queue(t)) -> Option(t);
+// size(Queue(t)) -> int; is_empty(Queue(t)) -> bool.
+import option
+import list
+
+type QueueState(t) { MkQueue(front, rear, count) }
+pub type Queue(t) { QueueValue(state) }
+pub type Pop(t) { Empty; Item(value, rest) }
+
+pub fn new() -> Queue(t) { QueueValue(MkQueue(nil, nil, 0)) }
+pub fn push(q : Queue(t), value : t) -> Queue(t) {
+  match q { QueueValue(MkQueue(front, rear, n)) -> QueueValue(MkQueue(front, cons(value, rear), n + 1)) }
+}
+pub fn pop(q : Queue(t)) -> Pop(t) {
+  match q {
+    QueueValue(MkQueue(front, rear, n)) -> {
+      if null?(front) {
+        if null?(rear) { Empty } else { pop_rear(rear, n) }
+      } else {
+        Item(car(front), QueueValue(MkQueue(cdr(front), rear, n - 1)))
+      }
+    }
+  }
+}
+fn pop_rear(rear, n) {
+  let front = list.reverse(rear)
+  Item(car(front), QueueValue(MkQueue(cdr(front), nil, n - 1)))
+}
+pub fn peek(q : Queue(t)) -> option.Option(t) {
+  match q {
+    QueueValue(MkQueue(front, rear, _)) -> {
+      if null?(front) { peek_rear(rear) } else { Some(car(front)) }
+    }
+  }
+}
+fn peek_rear(rear) {
+  if null?(rear) { None } else { Some(car(list.reverse(rear))) }
+}
+pub fn size(q : Queue(t)) -> int { match q { QueueValue(MkQueue(_, _, n)) -> n } }
+pub fn is_empty(q : Queue(t)) -> bool { size(q) == 0 }
