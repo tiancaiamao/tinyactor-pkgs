@@ -1,0 +1,48 @@
+import regexp
+import os
+import list
+import str
+
+fn fail(message : string) -> int { print(message); os.exit(1) }
+fn check(pattern : string, text : string, want : bool) {
+  match regexp.compile(pattern) {
+    Compiled(re) -> if regexp.matches(re, text) != want { print(pattern); print(text); fail("FAIL regexp matches") }
+    BadPattern(_) -> fail("FAIL regexp compile")
+  }
+}
+fn main() -> int {
+  check("literal", "xxliteralxx", true)
+  check("abc", "ab", false)
+  check("a.c", "abc", true)
+  check("[a-c]+", "xxabcxx", true)
+  check("[^a-c]+", "xyz", true)
+  check("^abc$", "abc", true)
+  check("^abc$", "xabc", false)
+  check("^abc$", "abcx", false)
+  check("a(b|c)d", "acd", true)
+  check("a(b|c)d", "abd", true)
+  check("a|bc", "xxbcxx", true)
+  check("ab?c", "ac", true)
+  check("ab*c", "abbbc", true)
+  check("ab+c", "ac", false)
+  check("", "", true)
+  check("((a*)*)b", repeat_a(30), false)
+
+  match regexp.compile("[") { BadPattern(_) -> print("PASS invalid pattern"); _ -> fail("FAIL invalid pattern") }
+  match regexp.compile("a**") { BadPattern(_) -> print("PASS invalid quantifier"); _ -> fail("FAIL invalid quantifier") }
+  match regexp.compile("(a") { BadPattern(_) -> print("PASS unclosed group"); _ -> fail("FAIL unclosed group") }
+  match regexp.compile("a+") { Compiled(r) -> if regexp.matches(r, "aa") == false { fail("FAIL matches") }; _ -> fail("FAIL compile") }
+
+  if regexp.find("a+", "xxaa") != "aa" { fail("FAIL find") }
+  let all = regexp.find_all("a+", "xaa yaaa")
+  if list.length(all) != 2 || list.nth(all, 0) != "aa" || list.nth(all, 1) != "aaa" { fail("FAIL find_all") }
+  let empty_all = regexp.find_all("", "ab")
+  if list.length(empty_all) != 3 { fail("FAIL find_all empty") }
+  if list.length(regexp.find_all("$", "ab")) != 1 { fail("FAIL find_all end anchor") }
+  if regexp.replace("a+", "xxaa", "Z") != "xxZ" { fail("FAIL replace") }
+  if regexp.replace("", "ab", "-") != "-a-b-" { fail("FAIL replace empty") }
+
+  print("PASS regexp tests")
+  0
+}
+fn repeat_a(n : int) -> string { if n == 0 { "" } else { str.concat("a", repeat_a(n - 1)) } }
