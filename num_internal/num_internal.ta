@@ -1,0 +1,55 @@
+// Shared unsigned decimal digit-string arithmetic. Inputs are normalized nonnegative digits.
+// No binary floating point or fixed-width numeric arithmetic is used for magnitudes.
+// Internal package module, copied alongside either consumer; not a public user API.
+pub fn norm(s : string) -> string { strip(s, 0) }
+fn strip(s : string, i : int) -> string {
+  if i + 1 < str.length(s) && str.char_at(s, i) == 48 { strip(s, i + 1) } else { str.substr(s, i, str.length(s)) }
+}
+pub fn cmp(a : string, b : string) -> int {
+  let x = norm(a); let y = norm(b)
+  if str.length(x) < str.length(y) { -1 } else { if str.length(x) > str.length(y) { 1 } else { cmp_at(x, y, 0) } }
+}
+fn cmp_at(a : string, b : string, i : int) -> int {
+  if i >= str.length(a) { 0 } else { if str.char_at(a, i) < str.char_at(b, i) { -1 } else { if str.char_at(a, i) > str.char_at(b, i) { 1 } else { cmp_at(a, b, i + 1) } } }
+}
+pub fn add(a : string, b : string) -> string { add_at(a, str.length(a) - 1, b, str.length(b) - 1, 0, "") }
+fn add_at(a : string, i : int, b : string, j : int, carry : int, out : string) -> string {
+  if i < 0 && j < 0 && carry == 0 { norm(out) } else {
+    let x = if i < 0 { 0 } else { str.char_at(a, i) - 48 }
+    let y = if j < 0 { 0 } else { str.char_at(b, j) - 48 }
+    let n = x + y + carry
+    add_at(a, i - 1, b, j - 1, n / 10, str.concat(str.from_int(n % 10), out))
+  }
+}
+// Requires a >= b.
+pub fn sub(a : string, b : string) -> string { sub_at(a, str.length(a) - 1, b, str.length(b) - 1, 0, "") }
+fn sub_at(a : string, i : int, b : string, j : int, borrow : int, out : string) -> string {
+  if i < 0 { norm(out) } else {
+    let y = if j < 0 { 0 } else { str.char_at(b, j) - 48 }
+    let n = str.char_at(a, i) - 48 - y - borrow
+    sub_at(a, i - 1, b, j - 1, if n < 0 { 1 } else { 0 }, str.concat(str.from_int(if n < 0 { n + 10 } else { n }), out))
+  }
+}
+pub fn mul(a : string, b : string) -> string { mul_rows(norm(a), str.length(norm(a)) - 1, norm(b), "0") }
+fn mul_rows(a : string, i : int, b : string, out : string) -> string {
+  if i < 0 { norm(out) } else {
+    let row = mul_digit(b, str.length(b) - 1, str.char_at(a, i) - 48, 0, "")
+    mul_rows(a, i - 1, b, add(out, str.concat(row, zeros(str.length(a) - 1 - i))))
+  }
+}
+fn zeros(n : int) -> string { if n <= 0 { "" } else { str.concat("0", zeros(n - 1)) } }
+fn mul_digit(b : string, j : int, d : int, carry : int, out : string) -> string {
+ if j < 0 { if carry == 0 { norm(out) } else { str.concat(str.from_int(carry), out) } } else {
+ let n = (str.char_at(b, j) - 48) * d + carry
+ mul_digit(b, j - 1, d, n / 10, str.concat(str.from_int(n % 10), out))
+ }
+}
+pub fn div(a : string, b : string) -> string { norm(div_at(norm(a), norm(b), 0, "")) }
+fn div_at(a : string, b : string, i : int, rem : string) -> string {
+   if i >= str.length(a) { "" } else {
+ let next = norm(str.concat(rem, str.substr(a, i, 1)))
+ let q = quotient_digit(next, b, 0)
+ str.concat(str.from_int(q), div_at(a, b, i + 1, sub(next, mul_digit(b, str.length(b) - 1, q, 0, ""))))
+ }
+}
+fn quotient_digit(rem : string, den : string, q : int) -> int { if q >= 9 || cmp(rem, den) < 0 { q } else { quotient_digit(sub(rem, den), den, q + 1) } }

@@ -1,0 +1,44 @@
+// Rational number as sign (int) + big numerator/denominator digit strings.
+// Invariants: den is a positive digit string (never "0"), num >= 0, gcd(num, den)
+// == 1, the sign is held only in the tag (+1/-1), and zero is always R(1, "0", "1").
+// make() rejects malformed integer strings and zero denominators with Err; the
+// denominator sign is folded into the numerator tag, so den is always positive.
+// add/sub/mul re-reduce via gcd; div returns Err("division by zero") on a zero
+// rational (make already rejects zero denominators at construction). compare
+// cross-multiplies, so no division is ever performed on magnitudes.
+import result
+import num_internal
+pub type Rational { R(int, string, string) }
+pub fn make(num : string, den : string) -> Result(Rational, string) {
+  if valid_integer(num) == false || valid_integer(den) == false { Err("invalid rational") } else {
+    let ns = sign_of(num)
+    let ds = sign_of(den)
+    let n = magnitude(num)
+    let d = magnitude(den)
+    if d == "0" { Err("zero denominator") } else {
+      let g = gcd(n, d)
+      Ok(R(if ns == ds { 1 } else { 0 - 1 }, num_internal.div(n, g), num_internal.div(d, g)))
+    }
+  }
+}
+fn valid_integer(s : string) -> bool { let start = if str.length(s) > 0 && (str.char_at(s, 0) == 45 || str.char_at(s, 0) == 43) { 1 } else { 0 }; str.length(s) > start && digits_only(s, start) }
+fn digits_only(s : string, i : int) -> bool { if i >= str.length(s) { true } else { if str.char_at(s, i) < 48 || str.char_at(s, i) > 57 { false } else { digits_only(s, i + 1) } } }
+fn sign_of(s : string) -> int { if str.length(s) > 0 && str.char_at(s, 0) == 45 { 0 - 1 } else { 1 } }
+fn magnitude(s : string) -> string { num_internal.norm(if str.length(s) > 0 && (str.char_at(s, 0) == 45 || str.char_at(s, 0) == 43) { str.substr(s, 1, str.length(s)) } else { s }) }
+fn gcd(a : string, b : string) -> string { gcd_at(a, b, 5 * (str.length(a) + str.length(b)) + 10) }
+// Step budget: Euclid terminates within 5 * digits steps (Lame's theorem), so
+// the cap is unreachable for a correct arithmetic base. It only fires if
+// num_internal is broken (e.g. an injected remainder bug): gcd then degrades to
+// a wrong-but-terminating answer so tests fail fast instead of hanging forever
+// (tail calls do not grow the tavm stack, so an unbounded loop never aborts).
+fn gcd_at(a : string, b : string, steps : int) -> string {
+  if b == "0" { a } else { if steps <= 0 { "0" } else { gcd_at(b, rem(a, b), steps - 1) } }
+}
+fn rem(a : string, b : string) -> string { num_internal.sub(a, num_internal.mul(b, num_internal.div(a, b))) }
+pub fn add(a : Rational, b : Rational) -> Rational { match a { R(sa, an, ad) -> match b { R(sb, bn, bd) -> { let left = num_internal.mul(an, bd); let right = num_internal.mul(bn, ad); let den = num_internal.mul(ad, bd); if sa == sb { normalize(sa, num_internal.add(left, right), den) } else { if num_internal.cmp(left, right) >= 0 { normalize(sa, num_internal.sub(left, right), den) } else { normalize(sb, num_internal.sub(right, left), den) } } } } } }
+fn normalize(s : int, n : string, d : string) -> Rational { if n == "0" { R(1, "0", "1") } else { let g = gcd(n, d); R(s, num_internal.div(n, g), num_internal.div(d, g)) } }
+pub fn sub(a : Rational, b : Rational) -> Rational { match b { R(s, n, d) -> add(a, R(0 - s, n, d)) } }
+pub fn mul(a : Rational, b : Rational) -> Rational { match a { R(sa, an, ad) -> match b { R(sb, bn, bd) -> normalize(sa * sb, num_internal.mul(an, bn), num_internal.mul(ad, bd)) } } }
+pub fn div(a : Rational, b : Rational) -> Result(Rational, string) { match b { R(_, "0", _) -> Err("division by zero"); R(sb, bn, bd) -> match a { R(sa, an, ad) -> Ok(normalize(sa * sb, num_internal.mul(an, bd), num_internal.mul(ad, bn))) } } }
+pub fn compare(a : Rational, b : Rational) -> int { match a { R(sa, an, ad) -> match b { R(sb, bn, bd) -> { if sa != sb { if sa < sb { -1 } else { 1 } } else { let c = num_internal.cmp(num_internal.mul(an, bd), num_internal.mul(bn, ad)); if sa < 0 { 0 - c } else { c } } } } } }
+pub fn to_string(a : Rational) -> string { match a { R(s, n, d) -> str.concat(str.concat(if s < 0 && n != "0" { "-" } else { "" }, n), str.concat("/", d)) } }

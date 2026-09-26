@@ -1,0 +1,32 @@
+// Decimal exact base-10 value represented as sign + unsigned coefficient digits + scale.
+// Parsing accepts ordinary decimal notation only (no exponent); division retains
+// at most 18 fractional digits, truncating toward zero. Invalid parse returns Err.
+// to_string: trims trailing fractional zeros ("0.50" -> "0.5", "1.000" -> "1"),
+// never emits a bare trailing dot for integer values, and suppresses negative
+// zero ("-0.0" parses fine but prints "0").
+import result
+import num_internal
+pub type Decimal { D(int, string, int) }
+pub fn from_int(n : int) -> Decimal { parse_int(str.from_int(n), 0) }
+fn parse_int(s : string, scale : int) -> Decimal { let neg = str.char_at(s, 0) == 45; let d = if neg { str.substr(s, 1, str.length(s)) } else { s }; D(if neg { -1 } else { 1 }, num_internal.norm(d), scale) }
+pub fn parse(s : string) -> Result(Decimal, string) { parse_at(s, 0, false, false, false, "", 0) }
+fn parse_at(s : string, i : int, neg : bool, seen : bool, dot : bool, digits : string, scale : int) -> Result(Decimal, string) {
+ if i >= str.length(s) { if seen { Ok(D(if neg { -1 } else { 1 }, num_internal.norm(digits), scale)) } else { Err("invalid decimal") } } else {
+ let c = str.char_at(s, i)
+ if i == 0 && (c == 43 || c == 45) { parse_at(s, i + 1, c == 45, seen, dot, digits, scale) } else {
+ if c == 46 && dot == false { parse_at(s, i + 1, neg, seen, true, digits, scale) } else {
+ if c >= 48 && c <= 57 { parse_at(s, i + 1, neg, true, dot, str.concat(digits, str.from_int(c - 48)), if dot { scale + 1 } else { scale }) } else { Err("invalid decimal") }
+ }
+ }
+ }
+}
+pub fn add(a : Decimal, b : Decimal) -> Decimal { match a { D(sa, da, xa) -> match b { D(sb, db, xb) -> { let scale = if xa > xb { xa } else { xb }; let x = num_internal.mul(da, pow10(scale - xa)); let y = num_internal.mul(db, pow10(scale - xb)); if sa == sb { D(sa, num_internal.add(x, y), scale) } else { if num_internal.cmp(x, y) >= 0 { D(sa, num_internal.sub(x, y), scale) } else { D(sb, num_internal.sub(y, x), scale) } } } } } }
+fn pow10(n : int) -> string { if n <= 0 { "1" } else { str.concat(pow10(n - 1), "0") } }
+pub fn sub(a : Decimal, b : Decimal) -> Decimal { match b { D(s, d, x) -> add(a, D(0 - s, d, x)) } }
+pub fn mul(a : Decimal, b : Decimal) -> Decimal { match a { D(sa, da, xa) -> match b { D(sb, db, xb) -> D(sa * sb, num_internal.mul(da, db), xa + xb) } } }
+pub fn div(a : Decimal, b : Decimal) -> Result(Decimal, string) { match b { D(_, "0", _) -> Err("division by zero"); D(sb, db, xb) -> match a { D(sa, da, xa) -> { let n = num_internal.mul(da, pow10(18 + xb - xa)); let q = num_internal.div(n, db); Ok(D(sa * sb, q, 18)) } } } }
+pub fn compare(a : Decimal, b : Decimal) -> int { match sub(a, b) { D(s, "0", _) -> 0; D(s, _, _) -> s } }
+pub fn to_string(a : Decimal) -> string { match a { D(s, d, scale) -> { let padded = zeros(d, scale + 1 - str.length(d)); let p = str.length(padded) - scale; let unsigned = if scale == 0 { padded } else { str.concat(str.concat(str.substr(padded, 0, p), "."), str.substr(padded, p, str.length(padded))) }; let trimmed = trim_fraction(unsigned); if s < 0 && trimmed != "0" { str.concat("-", trimmed) } else { trimmed } } } }
+fn zeros(s : string, n : int) -> string { if n <= 0 { s } else { zeros(str.concat("0", s), n - 1) } }
+fn trim_fraction(s : string) -> string { if str.length(s) > 0 && str.char_at(s, str.length(s) - 1) == 48 { if has_dot(s, 0) { trim_fraction(str.substr(s, 0, str.length(s) - 1)) } else { s } } else { if str.length(s) > 0 && str.char_at(s, str.length(s) - 1) == 46 { str.substr(s, 0, str.length(s) - 1) } else { s } } }
+fn has_dot(s : string, i : int) -> bool { if i >= str.length(s) { false } else { if str.char_at(s, i) == 46 { true } else { has_dot(s, i + 1) } } }

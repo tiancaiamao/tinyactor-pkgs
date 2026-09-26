@@ -1,0 +1,39 @@
+// Tests are written before implementation; each package is exercised against an isolated origin/main core copy.
+import decimal
+import os
+
+fn fail(message : string) -> int { print(message); os.exit(1) }
+fn need(r : Result(Decimal, string)) -> Decimal { match r { Ok(x) -> x; Err(m) -> fail(m) } }
+fn is(label : string, got : string, want : string) -> int { if got == want { print(label) } else { print(label); print(" got="); print(got); print(" want="); print(want); os.exit(1) }; 0 }
+fn main() -> int {
+  // 0.1 + 0.2 is exactly 0.3 — the case binary floating point gets wrong, and the reason decimal exists.
+  is("PASS decimal exact addition", decimal.to_string(decimal.add(need(decimal.parse("0.1")), need(decimal.parse("0.2")))), "0.3")
+  // 0.1 * 0.2 is exactly 0.02 (binary float yields 0.020000000000000004).
+  is("PASS decimal exact multiplication", decimal.to_string(decimal.mul(need(decimal.parse("0.1")), need(decimal.parse("0.2")))), "0.02")
+  is("PASS decimal carry", decimal.to_string(decimal.add(need(decimal.parse("999999999999999999")), need(decimal.parse("1")))), "1000000000000000000")
+  is("PASS decimal borrow", decimal.to_string(decimal.sub(need(decimal.parse("1000000000000000000")), need(decimal.parse("1")))), "999999999999999999")
+  // Mixed scales: the larger scale wins and digits are shifted exactly.
+  is("PASS decimal mixed scale", decimal.to_string(decimal.add(need(decimal.parse("0.1")), need(decimal.parse("0.02")))), "0.12")
+  is("PASS decimal negative", decimal.to_string(decimal.add(need(decimal.parse("-0.3")), need(decimal.parse("0.1")))), "-0.2")
+  is("PASS decimal negative multiply", decimal.to_string(decimal.mul(decimal.from_int(0 - 2), decimal.from_int(3))), "-6")
+  // to_string contract: trailing-zero trim, no bare dot, negative-zero suppression.
+  is("PASS decimal to_string trim", decimal.to_string(need(decimal.parse("0.50"))), "0.5")
+  is("PASS decimal to_string integer", decimal.to_string(need(decimal.parse("1.000"))), "1")
+  is("PASS decimal to_string negative zero", decimal.to_string(need(decimal.parse("-0.0"))), "0")
+  // Division keeps 18 fractional digits, truncated toward zero; 1/3 = 0.333...333.
+  is("PASS decimal division truncation", decimal.to_string(need(decimal.div(decimal.from_int(1), decimal.from_int(3)))), "0.333333333333333333")
+  // Diverse division forms: quotient digit 9, divisor > dividend, exact division,
+  // middle-zero quotient with ...667 truncation, and mixed scales.
+    is("PASS decimal division digit 9", decimal.to_string(need(decimal.div(decimal.from_int(8), decimal.from_int(9)))), "0.888888888888888888")
+  is("PASS decimal division quotient 9", decimal.to_string(need(decimal.div(decimal.from_int(81), decimal.from_int(9)))), "9")
+  is("PASS decimal division scale nine", decimal.to_string(need(decimal.div(need(decimal.parse("0.9")), need(decimal.parse("0.1"))))), "9")
+  is("PASS decimal division subunit", decimal.to_string(need(decimal.div(decimal.from_int(5), need(decimal.parse("1000000000000000000"))))), "0.000000000000000005")
+  is("PASS decimal division exact", decimal.to_string(need(decimal.div(decimal.from_int(1), decimal.from_int(2)))), "0.5")
+  is("PASS decimal division integer result", decimal.to_string(need(decimal.div(decimal.from_int(10), decimal.from_int(2)))), "5")
+  is("PASS decimal division middle zeros", decimal.to_string(need(decimal.div(need(decimal.parse("1001001001001001001001")), decimal.from_int(3)))), "333667000333667000333.666666666666666666")
+  is("PASS decimal division mixed scale", decimal.to_string(need(decimal.div(need(decimal.parse("0.1")), need(decimal.parse("0.001"))))), "100")
+  match decimal.div(decimal.from_int(1), decimal.from_int(0)) { Err(_) -> print("PASS decimal division by zero"); Ok(_) -> fail("FAIL decimal division by zero") }
+  match decimal.parse("1.2x") { Err(_) -> print("PASS decimal reject invalid"); _ -> fail("FAIL decimal reject invalid") }
+  match decimal.parse(".") { Err(_) -> print("PASS decimal reject dot"); _ -> fail("FAIL decimal reject dot") }
+  0
+}
