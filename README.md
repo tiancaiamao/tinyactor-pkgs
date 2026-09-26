@@ -12,7 +12,7 @@ artifacts into your project's `lib/`).
 | Package | Status | Tier |
 |---|---|---|
 | `_template/` | minimal C-module template (smoke test with four-state verdict) | — |
-| `sqlite` | in progress | T1 |
+| `sqlite` | implemented — system SQLite wrapper, CRUD smoke/tests | T1 |
 | `markdown` (md4c) | planned — extraction from core branch `std-batch6-docs` | T1 |
 | `yaml` (libyaml) | planned — same | T1 |
 | `queue` / `deque` / `priority_queue` | planned (pure ta) | T1 |

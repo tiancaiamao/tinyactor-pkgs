@@ -1,0 +1,59 @@
+import sqlite
+import os
+
+fn fail(message) { print(message); os.exit(1) }
+fn main() {
+  match sqlite.open(":memory:") {
+    Err(_) -> fail("FAIL open memory")
+    Ok(db) -> {
+      sqlite.exec(db, "create table item (id integer, name text)")
+      match sqlite.prepare(db, "insert into item values (?, ?)") {
+        Err(_) -> fail("FAIL prepare insert")
+        Ok(stmt) -> {
+                    match sqlite.bind_int(stmt, 1, 1) { Ok(_) -> 0; _ -> fail("FAIL bind int") }
+          match sqlite.bind_text(stmt, 2, "one") { Ok(_) -> 0; _ -> fail("FAIL bind text") }
+          match sqlite.next(stmt) { Ok(false) -> print("PASS parameter binding"); _ -> fail("FAIL bound insert") }
+          sqlite.finalize(stmt)
+        }
+      }
+      match sqlite.exec(db, "insert into missing values (1)") {
+        Err(_) -> print("PASS bad SQL rejected")
+        _ -> fail("FAIL bad SQL accepted")
+      }
+      match sqlite.prepare(db, "select id, name from item") {
+        Err(_) -> fail("FAIL prepare select")
+        Ok(stmt) -> {
+          match sqlite.next(stmt) {
+            Ok(true) -> {
+              if sqlite.column_text(stmt, 0) == "1" {
+                if sqlite.column_text(stmt, 1) == "one" { print("PASS CRUD row") } else { fail("FAIL CRUD name") }
+              } else { fail("FAIL CRUD id") }
+            }
+            _ -> fail("FAIL CRUD result")
+          }
+          match sqlite.next(stmt) { Ok(false) -> 0; _ -> fail("FAIL end of rows") }
+          sqlite.finalize(stmt)
+        }
+      }
+            match sqlite.open("/etc/hosts") {
+        Err(_) -> fail("FAIL open non-SQLite file")
+        Ok(other) -> {
+          match sqlite.exec(other, "select 1") {
+            Err(_) -> print("PASS non-SQLite file rejected")
+            _ -> fail("FAIL non-SQLite file accepted")
+          }
+          sqlite.close(other)
+        }
+      }
+            match sqlite.open("/no/such/directory/sqlite.db") {
+        Err(message) -> {
+          if str.index_of(message, "unable to open") >= 0 { print("PASS open failure rejected") }
+          else { fail("FAIL open failure missing cause") }
+        }
+        _ -> fail("FAIL open failure accepted")
+      }
+      sqlite.close(db)
+      print("PASS sqlite tests")
+    }
+  }
+}
