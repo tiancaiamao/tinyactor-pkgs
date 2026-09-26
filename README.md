@@ -16,4 +16,4 @@ artifacts into your project's `lib/`).
 | `markdown` | implemented — md4c 0.5.2 vendored dynamic module; returns `html.Node` | T1 |
 | `yaml` | implemented — libyaml 0.2.5 vendored dynamic module | T1 |
 | `queue` / `deque` / `priority_queue` | planned (pure ta) | T1 |
-| `sdl` | planned (SDL2) | T1 |
+| `sdl` | implemented — SDL2 wrapper, headless smoke/tests | T1 |

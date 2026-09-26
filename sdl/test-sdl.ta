@@ -1,0 +1,35 @@
+import sdl
+import os
+
+fn fail(message) { print(message); os.exit(1) }
+fn main() {
+  match sdl.init() {
+        Err(_) -> fail("FAIL init")
+    Ok(_) -> 0
+  }
+  match sdl.create_window("tinyactor-sdl-test", 32, 32) {
+        Err(_) -> fail("FAIL create window")
+    Ok(window) -> {
+      match sdl.poll_event() {
+        None -> print("PASS empty event queue")
+        Some(_) -> print("PASS event queue")
+      }
+      match sdl.delay(2) { Ok(_) -> print("PASS timer delay"); _ -> fail("FAIL delay") }
+            match sdl.destroy_window(window) {
+        Err(_) -> fail("FAIL destroy")
+        Ok(_) -> print("PASS destroy")
+      }
+      match sdl.destroy_window(window) {
+        Err(_) -> print("PASS closed window rejected")
+        _ -> fail("FAIL closed window accepted")
+      }
+
+    }
+  }
+  match sdl.delay(-1) {
+    Err(_) -> print("PASS invalid delay rejected")
+    _ -> fail("FAIL invalid delay accepted")
+  }
+  match sdl.quit() { Ok(_) -> print("PASS SDL quit"); _ -> fail("FAIL quit") }
+  print("PASS sdl tests")
+}
