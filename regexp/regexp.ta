@@ -1,0 +1,199 @@
+// Pure TinyActor regexp parser and Thompson-style finite-state simulator.
+// State IDs and transition maps are immutable; work is bounded by NFA size.
+import str
+import list
+import dict
+
+pub type ParseResult { Parsed(ast); Invalid(reason) }
+pub type Ast { Alt(left, right); Seq(left, right); Star(node); Plus(node); Optional(node); Lit(ch); Class(ranges, negated); Any(marker); Begin(marker); End(marker); Group(node); EpsilonNode(marker) }
+type ParsedAt { ParsedAt(ast, pos, error) }
+pub type CompileResult { Compiled(regex); BadPattern(reason) }
+pub type Regex { RegexValue(start, transitions, epsilon) }
+pub type Found { FoundRange(start, end); NotFound }
+
+type Built { Built(start, next, trans, eps) }
+pub type Edge { Edge(ast, target) }
+
+
+pub fn parse(pattern : string) -> ParseResult {
+  match alt(pattern, 0) {
+    ParsedAt(ast, pos, error) -> if error != "" { Invalid(error) } else if pos != str.length(pattern) { Invalid("unexpected token") } else { Parsed(ast) }
+  }
+}
+fn alt(s, i) {
+  match seq(s, i) { ParsedAt(a, p, e) ->
+    if p < str.length(s) && str.char_at(s, p) == '|' {
+      match alt(s, p + 1) { ParsedAt(b, q, e2) -> ParsedAt(Alt(a, b), q, choose(e, e2)) }
+    } else { ParsedAt(a, p, e) }
+  }
+}
+fn seq(s, i) {
+  if i >= str.length(s) || str.char_at(s, i) == '|' || str.char_at(s, i) == ')' { ParsedAt(EpsilonNode(0), i, "") }
+  else { match repeat(s, i) { ParsedAt(a, p, e) ->
+    if p >= str.length(s) || str.char_at(s, p) == '|' || str.char_at(s, p) == ')' { ParsedAt(a, p, e) }
+    else { match seq(s, p) { ParsedAt(b, q, e2) -> ParsedAt(Seq(a, b), q, choose(e, e2)) } }
+  } }
+}
+fn repeat(s, i) {
+  match atom(s, i) { ParsedAt(n, p, e) ->
+    if str.char_at(s, p) == '*' { ParsedAt(Star(n), p + 1, e) }
+    else if str.char_at(s, p) == '+' { ParsedAt(Plus(n), p + 1, e) }
+    else if str.char_at(s, p) == '?' { ParsedAt(Optional(n), p + 1, e) }
+    else { ParsedAt(n, p, e) }
+  }
+}
+fn atom(s, i) {
+  let c = str.char_at(s, i)
+  if i >= str.length(s) { ParsedAt(EpsilonNode(0), i, "expected atom") }
+  else if c == '(' { match alt(s, i + 1) { ParsedAt(n, p, e) -> if str.char_at(s, p) == ')' { ParsedAt(Group(n), p + 1, e) } else { ParsedAt(Group(n), p, "unclosed group") } } }
+  else if c == '[' { class_parse(s, i + 1, false, nil) }
+  else if c == '.' { ParsedAt(Any(0), i + 1, "") }
+  else if c == '^' { ParsedAt(Begin(0), i + 1, "") }
+  else if c == '$' { ParsedAt(End(0), i + 1, "") }
+  else if c == ')' || c == '|' || c == '*' || c == '+' || c == '?' { ParsedAt(EpsilonNode(0), i + 1, "unexpected operator") }
+  else { ParsedAt(Lit(c), i + 1, "") }
+}
+fn class_parse(s, i, neg, acc) {
+  let c = str.char_at(s, i)
+  if i >= str.length(s) { ParsedAt(Class(list.reverse(acc), neg), i, "unclosed character class") }
+  else if c == ']' { ParsedAt(Class(list.reverse(acc), neg), i + 1, "") }
+  else if c == '^' && null?(acc) { class_parse(s, i + 1, true, acc) }
+  else if str.char_at(s, i + 1) == '-' && i + 2 < str.length(s) && str.char_at(s, i + 2) != ']' { class_parse(s, i + 3, neg, cons(cons(c, str.char_at(s, i + 2)), acc)) }
+  else { class_parse(s, i + 1, neg, cons(cons(c, c), acc)) }
+}
+fn choose(a, b) { if a != "" { a } else { b } }
+
+pub fn compile(pattern : string) -> CompileResult {
+  match parse(pattern) {
+    Invalid(e) -> BadPattern(e)
+    Parsed(ast) -> {
+      let b = build(ast, 0, 1, dict.int_new(), dict.int_new())
+      match b { Built(start, next, trans, eps) -> Compiled(RegexValue(start, trans, eps)) }
+    }
+  }
+}
+fn build(ast, target, next, trans, eps) {
+  match ast {
+    Lit(c) -> Built(next, next + 1, dict.insert(trans, next, Edge(Lit(c), target)), eps)
+    Any(_) -> Built(next, next + 1, dict.insert(trans, next, Edge(Any(0), target)), eps)
+    Class(r, n) -> Built(next, next + 1, dict.insert(trans, next, Edge(Class(r, n), target)), eps)
+    Begin(_) -> Built(next, next + 1, dict.insert(trans, next, Edge(Begin(0), target)), eps)
+    End(_) -> Built(next, next + 1, dict.insert(trans, next, Edge(End(0), target)), eps)
+    EpsilonNode(_) -> Built(next, next + 1, trans, dict.insert(eps, next, cons(target, nil)))
+    Group(x) -> build(x, target, next, trans, eps)
+    Seq(a, b) -> {
+      let right = build(b, target, next, trans, eps)
+      match right { Built(rs, rn, rt, re) -> build(a, rs, rn, rt, re) }
+    }
+    Alt(a, b) -> {
+      let left = build(a, target, next + 1, trans, eps)
+      match left { Built(ls, ln, lt, le) -> {
+        let right = build(b, target, ln, lt, le)
+        match right { Built(rs, rn, rt, re) -> Built(next, rn, rt, dict.insert(re, next, cons(ls, cons(rs, nil)))) }
+      } }
+    }
+    Star(x) -> {
+      let inner = build(x, next, next + 1, trans, eps)
+      match inner { Built(s, n, t, e) -> Built(next, n, t, dict.insert(e, next, cons(s, cons(target, nil)))) }
+    }
+    Plus(x) -> {
+      let loop = next
+      let inner = build(x, loop, next + 1, trans, eps)
+      match inner { Built(s, n, t, e) -> Built(s, n, t, dict.insert(e, loop, cons(s, cons(target, nil)))) }
+    }
+    Optional(x) -> {
+      let inner = build(x, target, next + 1, trans, eps)
+      match inner { Built(s, n, t, e) -> Built(next, n, t, dict.insert(e, next, cons(s, cons(target, nil)))) }
+    }
+  }
+}
+
+
+pub fn matches(re : Regex, text : string) -> bool { match find_range(re, text, 0) { FoundRange(_, _) -> true; NotFound -> false } }
+fn find_range(re, text, start) {
+  if start > str.length(text) { NotFound } else {
+    match re { RegexValue(s, trans, eps) -> {
+      let result = scan_start(cons(s, nil), trans, eps, text, start, start)
+      match result { FoundRange(_, _) -> result; NotFound -> find_range(re, text, start + 1) }
+    } }
+  }
+}
+fn scan_start(seeds, trans, eps, text, origin, pos) { scan_longest(seeds, trans, eps, text, origin, pos, -1) }
+fn scan_longest(seeds, trans, eps, text, origin, pos, best) {
+  let active = close(seeds, eps, trans, text, pos, dict.int_new(), nil)
+  let best2 = if has(active, 0) { pos } else { best }
+  if pos >= str.length(text) { if best2 < 0 { NotFound } else { FoundRange(origin, best2) } } else {
+    let moved = step(active, trans, str.char_at(text, pos), pos, nil)
+    if null?(moved) { if best2 < 0 { NotFound } else { FoundRange(origin, best2) } }
+    else { scan_longest(moved, trans, eps, text, origin, pos + 1, best2) }
+  }
+}
+
+
+fn close(todo, eps, trans, text, pos, seen, acc) {
+  if null?(todo) { acc } else {
+    let id = car(todo)
+    if dict.has_key(seen, id) { close(cdr(todo), eps, trans, text, pos, seen, acc) } else {
+      let more = match dict.get(eps, id) { Some(xs) -> xs; None -> nil }
+      let edge_tos = match dict.get(trans, id) { Some(Edge(Begin(_), target)) -> if pos == 0 { cons(target, nil) } else { nil }; Some(Edge(End(_), target)) -> if pos == str.length(text) { cons(target, nil) } else { nil }; _ -> nil }
+      close(list.append(cdr(todo), list.append(more, edge_tos)), eps, trans, text, pos, dict.insert(seen, id, true), cons(id, acc))
+    }
+  }
+}
+fn step(active, trans, ch, pos, acc) {
+  if null?(active) { list.reverse(acc) } else {
+    let id = car(active)
+    let next = match dict.get(trans, id) {
+      Some(Edge(matcher, target)) -> if accepts(matcher, ch, pos) { cons(target, acc) } else { acc }
+      None -> acc
+    }
+    step(cdr(active), trans, ch, pos, next)
+  }
+}
+fn accepts(matcher, ch, pos) {
+  match matcher {
+    Lit(c) -> c == ch
+    Any(_) -> true
+    Class(ranges, neg) -> class_has(ranges, ch) != neg
+    Begin(_) -> false
+    End(_) -> false
+    _ -> false
+  }
+}
+fn class_has(rs, ch) { if null?(rs) { false } else { let r = car(rs); if ch >= car(r) && ch <= cdr(r) { true } else { class_has(cdr(rs), ch) } } }
+fn has(xs, x) { if null?(xs) { false } else if car(xs) == x { true } else { has(cdr(xs), x) } }
+
+pub fn find(pattern : string, text : string) -> string { match compile(pattern) { Compiled(re) -> match find_range(re, text, 0) { FoundRange(a, b) -> str.substr(text, a, b - a); NotFound -> "" }; BadPattern(_) -> "" } }
+pub fn find_all(pattern : string, text : string) -> list(string) {
+  match compile(pattern) { Compiled(re) -> all_ranges(re, text, 0, nil); BadPattern(_) -> nil }
+}
+fn all_ranges(re : Regex, text : string, pos : int, acc : list(string)) -> list(string) {
+  if pos > str.length(text) { list.reverse(acc) } else {
+    match find_range(re, text, pos) {
+      NotFound -> list.reverse(acc)
+      FoundRange(a, b) -> {
+        let item = str.substr(text, a, b - a)
+        if b == a {
+          if a >= str.length(text) { list.reverse(cons(item, acc)) }
+          else { all_ranges(re, text, a + 1, cons(item, acc)) }
+        } else { all_ranges(re, text, b, cons(item, acc)) }
+      }
+    }
+  }
+}
+pub fn replace(pattern : string, text : string, replacement : string) -> string {
+  match compile(pattern) { Compiled(re) -> replace_at(re, text, replacement, 0, ""); BadPattern(_) -> text }
+}
+fn replace_at(re : Regex, text : string, replacement : string, pos : int, acc : string) -> string {
+  match find_range(re, text, pos) {
+    NotFound -> str.concat(acc, str.substr(text, pos, str.length(text) - pos))
+    FoundRange(a, b) -> {
+      let before = str.substr(text, pos, a - pos)
+      let acc2 = str.concat(acc, str.concat(before, replacement))
+      if b == a {
+        if a >= str.length(text) { acc2 }
+        else { replace_at(re, text, replacement, a + 1, str.concat(acc2, str.substr(text, a, 1))) }
+      } else { replace_at(re, text, replacement, b, acc2) }
+    }
+  }
+}
