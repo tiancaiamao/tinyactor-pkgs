@@ -1,0 +1,29 @@
+import deque
+import option
+import os
+
+fn fail(message : string) -> int { print(message); os.exit(1) }
+fn main() -> int {
+  let d0 = deque.new()
+  if deque.size(d0) != 0 { fail("FAIL deque empty size") }
+    match deque.pop_front(d0) { Empty -> print("PASS deque empty front"); _ -> fail("FAIL deque empty front") }
+  match deque.pop_back(d0) { Empty -> print("PASS deque empty back"); _ -> fail("FAIL deque empty back") }
+  let d1 = deque.push_front(deque.push_back(deque.push_front(d0, 2), 3), 1)
+  if option.unwrap(deque.peek_front(d1)) != 1 { fail("FAIL deque front peek") }
+  if option.unwrap(deque.peek_back(d1)) != 3 { fail("FAIL deque back peek") }
+  match deque.pop_back(d1) {
+    Item(v1, d2) -> {
+      if v1 != 3 { fail("FAIL deque back pop") }
+      let d3 = deque.push_back(d2, 4)
+      match deque.pop_front(d3) {
+        Item(v2, d4) -> {
+          if v2 != 1 { fail("FAIL deque front pop") }
+          match deque.pop_front(d4) { Item(2, d5) -> match deque.pop_back(d5) { Item(4, d6) -> if deque.is_empty(d6) { print("PASS deque tests") } else { fail("FAIL deque final empty") }; _ -> fail("FAIL deque last"); }; _ -> fail("FAIL deque middle") }
+        }
+        _ -> fail("FAIL deque first")
+      }
+    }
+    _ -> fail("FAIL deque back")
+  }
+  0
+}

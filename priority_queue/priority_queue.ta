@@ -1,0 +1,51 @@
+// priority_queue: persistent sorted list. Insert after existing equal
+// priorities, making removal O(1) and push O(n), with stable FIFO ties.
+// The comparator is an explicit three-way function (negative means
+// higher priority / before); int_new defaults to ascending integers.
+// Empty pop returns Empty; peek returns None.
+//
+// API: new(compare : t -> t -> int) -> PriorityQueue(t), where
+// compare(a,b) returns an int (<0 removes a before b);
+// int_new() -> PriorityQueue(int);
+
+
+
+// pop(PriorityQueue(t)) -> Pop(t); peek(PriorityQueue(t)) -> Option(t);
+// size(PriorityQueue(t)) -> int; is_empty(PriorityQueue(t)) -> bool.
+import option
+import list
+import cmp
+
+type QueueState(t) { MkQueue(compare, items) }
+pub type PriorityQueue(t) { QueueValue(state) }
+pub type Pop(t) { Empty; Item(value, rest) }
+
+pub fn new(compare : t -> t -> int) -> PriorityQueue(t) {
+  QueueValue(MkQueue(compare, nil))
+}
+pub fn int_new() -> PriorityQueue(int) { new(fn(a) { fn(b) { cmp.int_cmp(a, b) } }) }
+pub fn push(q : PriorityQueue(t), value : t) -> PriorityQueue(t) {
+  match q { QueueValue(MkQueue(compare, items)) -> QueueValue(MkQueue(compare, insert_stable(compare, value, items))) }
+}
+fn insert_stable(compare, value, items) {
+  if null?(items) {
+    cons(value, nil)
+  } else {
+    if compare(value)(car(items)) < 0 {
+      cons(value, items)
+    } else {
+      cons(car(items), insert_stable(compare, value, cdr(items)))
+    }
+  }
+}
+pub fn pop(q : PriorityQueue(t)) -> Pop(t) {
+  match q {
+    QueueValue(MkQueue(compare, cons(head, tail))) -> Item(head, QueueValue(MkQueue(compare, tail)))
+    QueueValue(MkQueue(_, nil)) -> Empty
+  }
+}
+pub fn peek(q : PriorityQueue(t)) -> option.Option(t) {
+  match q { QueueValue(MkQueue(_, cons(head, _))) -> Some(head); QueueValue(MkQueue(_, nil)) -> None }
+}
+pub fn size(q : PriorityQueue(t)) -> int { match q { QueueValue(MkQueue(_, items)) -> list.length(items) } }
+pub fn is_empty(q : PriorityQueue(t)) -> bool { size(q) == 0 }

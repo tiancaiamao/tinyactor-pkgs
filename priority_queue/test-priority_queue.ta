@@ -1,0 +1,35 @@
+import priority_queue
+import os
+
+fn fail(message : string) -> int { print(message); os.exit(1) }
+fn main() -> int {
+  let q0 = priority_queue.int_new()
+  if priority_queue.size(q0) != 0 { fail("FAIL priority empty size") }
+  match priority_queue.pop(q0) { Empty -> print("PASS priority empty pop"); _ -> fail("FAIL priority empty pop") }
+    let q1 = priority_queue.push(priority_queue.push(priority_queue.push(q0, 4), 1), 3)
+  if priority_queue.size(q1) != 3 { fail("FAIL priority size") }
+  match priority_queue.peek(q1) { Some(1) -> print("PASS priority peek"); _ -> fail("FAIL priority peek") }
+  match priority_queue.pop(q1) {
+    Item(v1, q2) -> {
+      if v1 != 1 { fail("FAIL priority ascending first") }
+      let q3 = priority_queue.push(q2, 1)
+      match priority_queue.pop(q3) {
+        Item(v2, q4) -> {
+          if v2 != 1 { fail("FAIL priority ascending second") }
+          match priority_queue.pop(q4) { Item(3, q5) -> match priority_queue.pop(q5) { Item(4, q6) -> if priority_queue.is_empty(q6) { print("PASS priority tests") } else { fail("FAIL priority final empty") }; _ -> fail("FAIL priority last") }; _ -> fail("FAIL priority third") }
+        }
+        _ -> fail("FAIL priority second")
+      }
+    }
+    _ -> fail("FAIL priority first")
+  }
+  let stable = priority_queue.push(priority_queue.push(priority_queue.push(priority_queue.new(fn(a) { fn(b) { car(a) - car(b) } }), cons(5, "first")), cons(2, "middle")), cons(5, "second"))
+  match priority_queue.pop(stable) { Item(v1, rest) -> {
+    if cdr(v1) != "middle" { fail("FAIL priority custom order") }
+    match priority_queue.pop(rest) { Item(v2, tail) -> {
+      if cdr(v2) != "first" { fail("FAIL priority tie FIFO first") }
+      match priority_queue.pop(tail) { Item(v3, _) -> if cdr(v3) == "second" { print("PASS priority stable FIFO") } else { fail("FAIL priority tie FIFO second") }; _ -> fail("FAIL priority custom third") }
+    }; _ -> fail("FAIL priority custom second") }
+  }; _ -> fail("FAIL priority custom first") }
+  0
+}
