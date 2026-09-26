@@ -1,0 +1,10 @@
+// smoke.ta has four verdicts: PASS, FAIL, SKIP (known missing runtime prerequisite), UNKNOWN.
+import yaml
+import os
+
+fn main() {
+  match yaml.try_parse("name: Ada\n") {
+    Err(_) -> { print("FAIL yaml parse"); os.exit(1) }
+    Ok(_) -> print("PASS yaml parse")
+  }
+}
