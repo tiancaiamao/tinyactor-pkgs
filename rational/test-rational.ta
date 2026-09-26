@@ -1,0 +1,44 @@
+// Tests are written before implementation; each package is exercised against an isolated origin/main core copy.
+import rational
+import os
+fn fail(message : string) -> int { print(message); os.exit(1) }
+fn need(r : Result(Rational, string)) -> Rational { match r { Ok(x) -> x; Err(m) -> fail(m) } }
+fn is(label : string, got : string, want : string) -> int { if got == want { print(label) } else { print(label); print(" got="); print(got); print(" want="); print(want); os.exit(1) }; 0 }
+fn main() -> int {
+    match rational.make("6", "8") {
+    Ok(r) -> if rational.to_string(r) == "3/4" { print("PASS rational reduction") } else { fail("FAIL rational reduction") }
+    _ -> fail("FAIL rational construct")
+  }
+  match rational.make("81", "9") {
+    Ok(r) -> if rational.to_string(r) == "9/1" { print("PASS rational quotient 9") } else { fail("FAIL rational quotient 9") }
+    _ -> fail("FAIL rational quotient 9 construct")
+  }
+  match rational.make("-2", "4") {
+    Ok(r) -> if rational.to_string(r) == "-1/2" { print("PASS rational negative") } else { fail("FAIL rational negative") }
+    _ -> fail("FAIL rational negative construct")
+  }
+  match rational.make("2", "-4") {
+    Ok(r) -> if rational.to_string(r) == "-1/2" { print("PASS rational denominator sign folded") } else { fail("FAIL rational denominator sign") }
+    _ -> fail("FAIL rational denominator sign construct")
+  }
+  match rational.make("123456789012345678901234567890", "3") {
+    Ok(r) -> if rational.to_string(r) == "41152263004115226300411522630/1" { print("PASS rational arbitrary precision") } else { fail("FAIL rational arbitrary precision") }
+    _ -> fail("FAIL rational large construct")
+  }
+  let half = need(rational.make("1", "2"))
+  let third = need(rational.make("1", "3"))
+  is("PASS rational sub", rational.to_string(rational.sub(half, third)), "1/6")
+  is("PASS rational add negative", rational.to_string(rational.add(need(rational.make("-2", "4")), need(rational.make("-2", "4")))), "-1/1")
+  is("PASS rational mul", rational.to_string(rational.mul(need(rational.make("2", "3")), need(rational.make("3", "4")))), "1/2")
+  is("PASS rational div", rational.to_string(need(rational.div(half, need(rational.make("3", "4"))))), "2/3")
+  match rational.div(half, need(rational.make("0", "5"))) { Err(_) -> print("PASS rational division by zero"); Ok(_) -> fail("FAIL rational division by zero") }
+  if rational.compare(third, half) == 0 - 1 { print("PASS rational compare less") } else { fail("FAIL rational compare less") }
+  let negthird = need(rational.make("-1", "3"))
+  let neghalf = need(rational.make("-1", "2"))
+  if rational.compare(negthird, neghalf) == 1 { print("PASS rational compare negative") } else { fail("FAIL rational compare negative") }
+  if rational.compare(half, half) == 0 { print("PASS rational compare equal") } else { fail("FAIL rational compare equal") }
+  is("PASS rational zero", rational.to_string(need(rational.make("0", "7"))), "0/1")
+  match rational.make("12x", "4") { Err(_) -> print("PASS rational reject invalid"); _ -> fail("FAIL rational reject invalid") }
+  match rational.make("1", "0") { Err(_) -> print("PASS rational zero denominator"); _ -> fail("FAIL rational zero denominator") }
+  0
+}

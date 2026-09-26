@@ -1,0 +1,23 @@
+// Probe tests for the shared digit-string base. Division edge cases: zero
+// quotient, divisor greater than dividend, long remainder chains, plus
+// add/sub/mul against known values (fuzzed against Python at development time).
+import num_internal
+import os
+fn chk(label : string, got : string, want : string) -> int { if got == want { print(label) } else { print(label); print(" got="); print(got); print(" want="); print(want); os.exit(1) }; 0 }
+fn main() -> int {
+  chk("PASS div zero quotient", num_internal.div("0", "5"), "0")
+  chk("PASS div divisor>dividend", num_internal.div("3", "10"), "0")
+  chk("PASS div truncation", num_internal.div("7", "2"), "3")
+  chk("PASS div multi-digit", num_internal.div("100", "10"), "10")
+    chk("PASS div remainder chain", num_internal.div("1000000000000000000000000001", "3"), "333333333333333333333333333")
+  // Quotients containing the digit 9 exercise the top trial digit (q = 9 path).
+  chk("PASS div quotient 9", num_internal.div("81", "9"), "9")
+  chk("PASS div quotient 9 carry", num_internal.div("90", "9"), "10")
+  chk("PASS div quotient 9 multi", num_internal.div("729", "81"), "9")
+  chk("PASS div quotient 9 long", num_internal.div("5734915518984349862493867912255", "7"), "819273645569192837499123987465")
+  chk("PASS div 30-digit", num_internal.div("123456789012345678901234567890", "3"), "41152263004115226300411522630")
+  chk("PASS add carry", num_internal.add("999999999999999999", "1"), "1000000000000000000")
+  chk("PASS sub borrow", num_internal.sub("1000000000000000000", "1"), "999999999999999999")
+  chk("PASS mul", num_internal.mul("123456789", "987654321"), "121932631112635269")
+  0
+}
