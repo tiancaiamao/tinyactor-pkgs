@@ -17,3 +17,4 @@ artifacts into your project's `lib/`).
 | `yaml` | implemented — libyaml 0.2.5 vendored dynamic module | T1 |
 | `queue` / `deque` / `priority_queue` | implemented — pure TA FIFO/deque/stable priority queue | T1 |
 | `sdl` | implemented — SDL2 wrapper, headless smoke/tests | T1 |
+| `unicode` | implemented — pure-TA UTF-8 encode/decode, dual-view metrics, iteration | T2 |

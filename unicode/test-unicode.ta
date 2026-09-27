@@ -1,0 +1,151 @@
+// unicode tests: UTF-8 encode/decode (full 1-4 byte paths), strict
+// rejection of invalid sequences, dual-view metrics, iteration, ascii
+// check. Byte literals are built with str.chr because the v1 compiler
+// accepts no hex int literals and no \xNN string escapes (both rejections
+// reproduced in unicode/README.md).
+import unicode
+import str
+import list
+import os
+
+fn fail(message : string) -> int { print(message); os.exit(1) }
+
+// bs: byte list -> string (byte values 0..255).
+fn bs(l) -> string {
+  if null?(l) { "" } else { str.concat(str.chr(car(l)), bs(cdr(l))) }
+}
+
+// cp list -> concatenated encodings.
+fn enc_all(l) -> string {
+  if null?(l) { "" } else { str.concat(unicode.encode(car(l)), enc_all(cdr(l))) }
+}
+
+fn expect_decode(s : string, i : int, want_cp : int, want_size : int, label : string) {
+  match unicode.decode_at(s, i) {
+    Decoded(cp, size) -> if cp != want_cp || size != want_size {
+      print(label); print(cp); print(size); fail("FAIL decode (wrong value)")
+    }
+    Invalid -> { print(label); fail("FAIL decode (got Invalid)") }
+  }
+}
+
+fn expect_invalid(s : string, i : int, label : string) {
+  match unicode.decode_at(s, i) {
+    Invalid -> 0
+    Decoded(cp, size) -> { print(label); print(cp); print(size); fail("FAIL expected Invalid") }
+  }
+}
+
+// round_trip: encode then decode must recover the codepoint and size.
+fn round_trip(cp : int, want_size : int) {
+  let s = unicode.encode(cp)
+  if str.length(s) != want_size { print(cp); fail("FAIL encode byte length") }
+  match unicode.decode_at(s, 0) {
+    Decoded(got, size) -> if got != cp || size != want_size { print(cp); fail("FAIL round trip") }
+    Invalid -> { print(cp); fail("FAIL round trip got Invalid") }
+  }
+}
+
+fn main() -> int {
+  // ---- encode: 1-4 byte full path, boundary codepoints ----
+  if unicode.encode(65) != "A" { fail("FAIL encode 1-byte") }
+  if unicode.encode(0) != bs(cons(0, nil)) { fail("FAIL encode U+0000") }
+  if unicode.encode(127) != bs(cons(127, nil)) { fail("FAIL encode U+007F") }
+  if unicode.encode(128) != bs(cons(194, cons(128, nil))) { fail("FAIL encode U+0080 min 2-byte") }
+  if unicode.encode(2047) != bs(cons(223, cons(191, nil))) { fail("FAIL encode U+07FF max 2-byte") }
+  if unicode.encode(20013) != bs(cons(228, cons(184, cons(173, nil)))) { fail("FAIL encode U+4E2D") }
+  if unicode.encode(8364) != bs(cons(226, cons(130, cons(172, nil)))) { fail("FAIL encode U+20AC") }
+  if unicode.encode(65535) != bs(cons(239, cons(191, cons(191, nil)))) { fail("FAIL encode U+FFFF max 3-byte") }
+  if unicode.encode(128512) != bs(cons(240, cons(159, cons(152, cons(128, nil))))) { fail("FAIL encode U+1F600") }
+  if unicode.encode(131072) != bs(cons(240, cons(160, cons(128, cons(128, nil))))) { fail("FAIL encode U+20000 CJK ext B") }
+  if unicode.encode(1114111) != bs(cons(244, cons(143, cons(191, cons(191, nil))))) { fail("FAIL encode U+10FFFF max") }
+
+  // ---- encode: rejection semantics (empty string) ----
+  if unicode.encode(-1) != "" { fail("FAIL encode negative") }
+  if unicode.encode(55296) != "" { fail("FAIL encode surrogate min") }
+  if unicode.encode(57343) != "" { fail("FAIL encode surrogate max") }
+  if unicode.encode(1114112) != "" { fail("FAIL encode beyond U+10FFFF") }
+
+  // ---- round trip across all 4 length classes ----
+  round_trip(0, 1)
+  round_trip(65, 1)
+  round_trip(127, 1)
+  round_trip(128, 2)
+  round_trip(2047, 2)
+  round_trip(2048, 3)
+  round_trip(20013, 3)
+  round_trip(65535, 3)
+  round_trip(65536, 4)
+  round_trip(128512, 4)
+  round_trip(1114111, 4)
+
+  // ---- decode: strict, full path ----
+  expect_decode(bs(cons(65, nil)), 0, 65, 1, "decode 1-byte")
+  expect_decode(bs(cons(194, cons(128, nil))), 0, 128, 2, "decode min 2-byte")
+  expect_decode(bs(cons(228, cons(184, cons(173, nil)))), 0, 20013, 3, "decode U+4E2D")
+  expect_decode(bs(cons(240, cons(159, cons(152, cons(128, nil))))), 0, 128512, 4, "decode U+1F600")
+  // decode at a byte offset inside a multi-char string
+  expect_decode(enc_all(cons(65, cons(20013, cons(128512, nil)))), 1, 20013, 3, "decode at offset 1")
+  expect_decode(enc_all(cons(65, cons(20013, cons(128512, nil)))), 4, 128512, 4, "decode at offset 4")
+
+  // ---- decode: invalid sequences (each must be rejected) ----
+  expect_invalid(bs(cons(128, nil)), 0, "stray continuation 0x80")
+  expect_invalid(bs(cons(191, nil)), 0, "stray continuation 0xBF")
+  expect_invalid(bs(cons(192, cons(175, nil))), 0, "overlong 2-byte C0 AF")
+  expect_invalid(bs(cons(193, cons(191, nil))), 0, "overlong 2-byte C1 BF")
+  expect_invalid(bs(cons(195, nil)), 0, "truncated 2-byte")
+  expect_invalid(bs(cons(195, cons(40, nil))), 0, "bad continuation C3 28")
+  expect_invalid(bs(cons(224, cons(159, cons(128, nil)))), 0, "overlong 3-byte E0 9F 80")
+  expect_invalid(bs(cons(228, cons(184, nil))), 0, "truncated 3-byte")
+  expect_invalid(bs(cons(237, cons(160, cons(128, nil)))), 0, "surrogate U+D800 ED A0 80")
+  expect_invalid(bs(cons(237, cons(191, cons(191, nil)))), 0, "surrogate U+DFFF ED BF BF")
+  expect_invalid(bs(cons(240, cons(143, cons(191, cons(191, nil))))), 0, "overlong 4-byte F0 8F BF BF (U+FFFF)")
+  expect_invalid(bs(cons(240, cons(159, cons(152, nil)))), 0, "truncated 4-byte")
+  expect_invalid(bs(cons(244, cons(144, cons(128, cons(128, nil))))), 0, "beyond max F4 90 80 80 (U+110000)")
+  expect_invalid(bs(cons(245, cons(128, cons(128, cons(128, nil))))), 0, "lead 0xF5")
+  expect_invalid(bs(cons(255, nil)), 0, "lead 0xFF")
+  expect_invalid(bs(cons(65, cons(20013, nil))), 99, "out-of-range index")
+
+  // ---- whole-string validity ----
+  if unicode.is_valid(enc_all(cons(65, cons(20013, cons(128512, nil))))) == false {
+    fail("FAIL is_valid ascii+cjk+emoji")
+  }
+  if unicode.is_valid("") == false { fail("FAIL is_valid empty") }
+    if unicode.is_valid(bs(cons(195, cons(40, nil)))) { fail("FAIL is_valid bad seq") }
+
+  // ---- dual-view metrics ----
+  if unicode.byte_length("A中") != 4 { fail("FAIL byte_length") }
+  if unicode.codepoint_length("A中") != 2 { fail("FAIL codepoint_length") }
+  if unicode.codepoint_length("") != 0 { fail("FAIL codepoint_length empty") }
+  // invalid bytes count one codepoint each (replacement-style), documented
+  if unicode.codepoint_length(bs(cons(195, cons(65, nil)))) != 2 { fail("FAIL codepoint_length invalid byte") }
+
+  // ---- codepoint-indexed access ----
+  if unicode.codepoint_at(enc_all(cons(65, cons(20013, cons(128512, nil)))), 0) != 65 { fail("FAIL codepoint_at 0") }
+  if unicode.codepoint_at(enc_all(cons(65, cons(20013, cons(128512, nil)))), 1) != 20013 { fail("FAIL codepoint_at 1") }
+  if unicode.codepoint_at(enc_all(cons(65, cons(20013, cons(128512, nil)))), 2) != 128512 { fail("FAIL codepoint_at 2") }
+  if unicode.codepoint_at(enc_all(cons(65, cons(20013, nil))), 3) != -1 { fail("FAIL codepoint_at out of range") }
+  if unicode.codepoint_at(bs(cons(195, cons(40, nil))), 0) != -1 { fail("FAIL codepoint_at invalid seq") }
+
+  // ---- iteration: codepoint + byte span ----
+  let st = unicode.steps(enc_all(cons(65, cons(20013, cons(128512, nil)))))
+  if list.length(st) != 3 { fail("FAIL steps count") }
+  match list.nth(st, 0) { Step(cp, start, size) -> if cp != 65 || start != 0 || size != 1 { fail("FAIL step 0") }; _ -> fail("FAIL step 0 shape") }
+  match list.nth(st, 1) { Step(cp, start, size) -> if cp != 20013 || start != 1 || size != 3 { fail("FAIL step 1") }; _ -> fail("FAIL step 1 shape") }
+  match list.nth(st, 2) { Step(cp, start, size) -> if cp != 128512 || start != 4 || size != 4 { fail("FAIL step 2") }; _ -> fail("FAIL step 2 shape") }
+  if list.length(unicode.steps("")) != 0 { fail("FAIL steps empty") }
+  // invalid byte appears as cp = -1 with span 1
+  let bad = unicode.steps(bs(cons(195, cons(65, nil))))
+  if list.length(bad) != 2 { fail("FAIL steps invalid count") }
+  match list.nth(bad, 0) { Step(cp, start, size) -> if cp != -1 || start != 0 || size != 1 { fail("FAIL step invalid") }; _ -> fail("FAIL step invalid shape") }
+  match list.nth(bad, 1) { Step(cp, start, size) -> if cp != 65 || start != 1 || size != 1 { fail("FAIL step after invalid") }; _ -> fail("FAIL step shape") }
+
+  // ---- ascii classification ----
+  if unicode.is_ascii("hello, world") == false { fail("FAIL is_ascii plain") }
+  if unicode.is_ascii("") == false { fail("FAIL is_ascii empty") }
+  if unicode.is_ascii(bs(cons(228, cons(184, cons(173, nil))))) { fail("FAIL is_ascii cjk") }
+  if unicode.is_ascii(bs(cons(128, nil))) { fail("FAIL is_ascii lone continuation") }
+
+  print("PASS unicode tests")
+  0
+}
