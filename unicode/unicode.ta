@@ -1,0 +1,204 @@
+// unicode module: full UTF-8 semantics for TinyActor strings, pure TA on
+// top of the builtin byte-oriented `str` module (str.char_at / str.chr /
+// str.substr / str.concat). This is the module the core lib/str.ta v1
+// boundary note defers to: core `str.length` counts BYTES and
+// str.upper/lower/pad are ASCII-only; this module supplies the UTF-8 view.
+//
+// Model: a TinyActor string is a byte array. A UTF-8 codepoint occupies
+// 1-4 bytes. All functions below operate on byte indices unless the name
+// says otherwise (codepoint_at / codepoint_length are codepoint-indexed).
+//
+// Encoding (encode):
+//   Valid codepoints are 0..0x10FFFF (0..1114111) excluding the surrogate
+//   range U+D800..U+DFFF (55296..57343). Anything else — negative, beyond
+//   U+10FFFF, surrogate — encodes to "" (empty string). "" is unambiguous
+//   as a failure value because U+0000 encodes to the 1-byte string
+//   chr(0), never to "".
+//
+// Decoding (decode_at): strict UTF-8, per RFC 3629. Rejected, returning
+//   Invalid:
+//   - truncated sequences (lead byte without its full continuation tail)
+//   - stray continuation bytes (0x80..0xBF with no lead byte)
+//   - overlong encodings (C0/C1 leads; E0 followed by < A0; F0 followed
+//     by < 90 — the encoded value is below the minimum for its length)
+//   - surrogates (ED followed by A0..BF, i.e. U+D800..U+DFFF)
+//   - values beyond U+10FFFF (F4 followed by >= 90; any F5..FF lead)
+//   - byte index out of range
+//   Decoding never "salvages" a prefix of an invalid sequence: one bad
+//   byte poisons the whole candidate sequence.
+//
+// Invalid bytes inside iteration / counting (steps, codepoint_length,
+// codepoint_at): each invalid BYTE counts as one codepoint with the
+// sentinel value -1 and a byte span of 1 (replacement-character style,
+// Go's utf8.RuneError model but with -1 instead of U+FFFD so callers can
+// distinguish invalid data from an actual U+FFFD in the input).
+//
+// v1 scope (see README.md for the explicit not-doing list): encode /
+// decode, dual-view metrics, iteration, whole-string validity, ASCII
+// classification. NO case mapping beyond ASCII (core str.upper/lower),
+// NO general category tables (whitespace, fullwidth, digits, ...), NO
+// normalization, NO grapheme clusters.
+import str
+import list
+
+// Decode: Decoded(codepoint, byte_size) on a strictly valid sequence at
+// the given byte index; Invalid on every rejection case listed above.
+pub type Decode { Decoded(cp, size); Invalid }
+
+// Step: one codepoint in an iteration — its value (-1 for an invalid
+// byte), its start byte index, and its byte span (1 for an invalid byte).
+pub type Step { Step(cp, start, size) }
+
+// encode: codepoint -> UTF-8 byte string. "" on invalid codepoint
+// (negative, surrogate, beyond U+10FFFF).
+pub fn encode(cp : int) -> string {
+  if cp < 0 || cp > 1114111 || (cp >= 55296 && cp <= 57343) {
+    ""
+  } else if cp < 128 {
+    str.chr(cp)
+  } else if cp < 2048 {
+    str.concat(str.chr(192 + cp / 64), str.chr(128 + cp % 64))
+  } else if cp < 65536 {
+    str.concat(str.chr(224 + cp / 4096), str.concat(str.chr(128 + cp / 64 % 64), str.chr(128 + cp % 64)))
+  } else {
+    str.concat(str.chr(240 + cp / 262144), str.concat(str.chr(128 + cp / 4096 % 64), str.concat(str.chr(128 + cp / 64 % 64), str.chr(128 + cp % 64))))
+  }
+}
+
+// decode_at: strictly decode the sequence starting at byte index i.
+pub fn decode_at(s : string, i : int) -> Decode {
+  let n = str.length(s)
+  if i < 0 || i >= n {
+    Invalid
+  } else {
+    let b = str.char_at(s, i)
+    if b < 128 {
+      Decoded(b, 1)
+    } else if b < 194 {
+      // 0x80..0xBF stray continuation; 0xC0/0xC1 always overlong
+      Invalid
+    } else if b < 224 {
+      let b1 = cont(s, i + 1, n, 128, 191)
+      if b1 < 0 { Invalid } else { Decoded((b - 192) * 64 + b1 - 128, 2) }
+    } else if b < 240 {
+      // E0 must be followed by A0..BF (no overlong); ED by 80..9F (no surrogates)
+      let lo = if b == 224 { 160 } else { 128 }
+      let hi = if b == 237 { 159 } else { 191 }
+      let b1 = cont(s, i + 1, n, lo, hi)
+      let b2 = cont(s, i + 2, n, 128, 191)
+      if b1 < 0 || b2 < 0 {
+        Invalid
+      } else {
+        Decoded((b - 224) * 4096 + (b1 - 128) * 64 + b2 - 128, 3)
+      }
+    } else if b < 245 {
+      // F0 must be followed by 90..BF (no overlong); F4 by 80..8F (max U+10FFFF)
+      let lo = if b == 240 { 144 } else { 128 }
+      let hi = if b == 244 { 143 } else { 191 }
+      let b1 = cont(s, i + 1, n, lo, hi)
+      let b2 = cont(s, i + 2, n, 128, 191)
+      let b3 = cont(s, i + 3, n, 128, 191)
+      if b1 < 0 || b2 < 0 || b3 < 0 {
+        Invalid
+      } else {
+        Decoded((b - 240) * 262144 + (b1 - 128) * 4096 + (b2 - 128) * 64 + b3 - 128, 4)
+      }
+    } else {
+      // 0xF5..0xFF: no valid sequence can start here
+      Invalid
+    }
+  }
+}
+
+// cont: the continuation byte at i if it exists and lies in [lo, hi],
+// else -1.
+fn cont(s : string, i : int, n : int, lo : int, hi : int) -> int {
+  if i >= n {
+    -1
+  } else {
+    let b = str.char_at(s, i)
+    if b < lo || b > hi { -1 } else { b }
+  }
+}
+
+// valid_from: does every sequence from byte index i to end decode
+// strictly?
+fn valid_from(s : string, i : int) -> bool {
+  if i >= str.length(s) {
+    true
+  } else {
+    match decode_at(s, i) {
+      Invalid -> false
+      Decoded(cp, size) -> valid_from(s, i + size)
+    }
+  }
+}
+
+// count_from: codepoints from byte index i to end; each invalid byte
+// counts as one (see header: -1 sentinel model).
+fn count_from(s : string, i : int) -> int {
+  if i >= str.length(s) {
+    0
+  } else {
+    match decode_at(s, i) {
+      Invalid -> 1 + count_from(s, i + 1)
+      Decoded(cp, size) -> 1 + count_from(s, i + size)
+    }
+  }
+}
+
+// steps_from: list every codepoint from byte index i with its span.
+fn steps_from(s : string, i : int) -> list(Step) {
+  if i >= str.length(s) {
+    nil
+  } else {
+    match decode_at(s, i) {
+      Invalid -> cons(Step(-1, i, 1), steps_from(s, i + 1))
+      Decoded(cp, size) -> cons(Step(cp, i, size), steps_from(s, i + size))
+    }
+  }
+}
+
+fn ascii_from(s : string, i : int) -> bool {
+  if i >= str.length(s) {
+    true
+  } else {
+    if str.char_at(s, i) >= 128 { false } else { ascii_from(s, i + 1) }
+  }
+}
+
+// is_valid: true iff the whole string decodes strictly ("" is valid).
+pub fn is_valid(s : string) -> bool {
+  valid_from(s, 0)
+}
+
+// byte_length: number of bytes (same as builtin str.length; provided so
+// the dual view reads symmetrically next to codepoint_length).
+pub fn byte_length(s : string) -> int {
+  str.length(s)
+}
+
+// codepoint_length: number of codepoints; invalid bytes count one each.
+pub fn codepoint_length(s : string) -> int {
+  count_from(s, 0)
+}
+
+// codepoint_at: the k-th codepoint (0-based, codepoint index). -1 when k
+// is out of range or the codepoint sits on an invalid byte.
+pub fn codepoint_at(s : string, k : int) -> int {
+  match list.nth(steps(s), k) {
+    Step(cp, start, size) -> cp
+    _ -> -1
+  }
+}
+
+// steps: iterate every codepoint with its byte span; see Step. Invalid
+// bytes yield Step(-1, i, 1).
+pub fn steps(s : string) -> list(Step) {
+  steps_from(s, 0)
+}
+
+// is_ascii: true iff every byte is < 0x80 ("" is ASCII).
+pub fn is_ascii(s : string) -> bool {
+  ascii_from(s, 0)
+}
