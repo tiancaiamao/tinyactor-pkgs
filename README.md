@@ -18,3 +18,6 @@ artifacts into your project's `lib/`).
 | `queue` / `deque` / `priority_queue` | implemented — pure TA FIFO/deque/stable priority queue | T1 |
 | `sdl` | implemented — SDL2 wrapper, headless smoke/tests | T1 |
 | `unicode` | implemented — pure-TA UTF-8 encode/decode, dual-view metrics, iteration | T2 |
+| `regexp` | implemented — pure-TA regexp parser + Thompson NFA simulator | T2 |
+| `decimal` / `rational` | implemented — exact base-10 decimal & reduced rational on shared digit-string bigint base | T2 |
+| `num_internal` | implemented — shared unsigned digit-string arithmetic, internal base for `decimal` / `rational` | T2 |

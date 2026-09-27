@@ -1,9 +1,9 @@
 TINYACTOR ?= ../tinyactor
 
 .PHONY: test clean
+
 test:
-	cp queue.ta $(TINYACTOR)/lib/queue.ta
-	cd $(TINYACTOR) && ./tinyactor run --no-cache $(CURDIR)/test-queue.ta
+	@set -e; tmp=$$(mktemp -d /tmp/ta-queue.XXXXXX); trap 'rm -rf "$$tmp"' EXIT; rsync -a --exclude='.git' --exclude='.tinyactor-build-*' $(TINYACTOR)/ "$$tmp/core/"; cp queue.ta "$$tmp/core/lib/queue.ta"; cd "$$tmp/core"; ./tinyactor run --no-cache $(CURDIR)/test-queue.ta
 
 clean:
 	true
