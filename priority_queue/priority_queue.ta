@@ -12,9 +12,9 @@
 
 // pop(PriorityQueue(t)) -> Pop(t); peek(PriorityQueue(t)) -> Option(t);
 // size(PriorityQueue(t)) -> int; is_empty(PriorityQueue(t)) -> bool.
-import option
-import list
-import cmp
+import "tinyactor:lib/option"
+import "tinyactor:lib/list"
+import "tinyactor:lib/cmp"
 
 type QueueState(t) { MkQueue(compare, items) }
 pub type PriorityQueue(t) { QueueValue(state) }
@@ -40,12 +40,13 @@ fn insert_stable(compare, value, items) {
 }
 pub fn pop(q : PriorityQueue(t)) -> Pop(t) {
   match q {
-    QueueValue(MkQueue(compare, cons(head, tail))) -> Item(head, QueueValue(MkQueue(compare, tail)))
-    QueueValue(MkQueue(_, nil)) -> Empty
+    QueueValue(MkQueue(compare, items)) -> {
+      if null?(items) { Empty } else { Item(car(items), QueueValue(MkQueue(compare, cdr(items)))) }
+    }
   }
 }
-pub fn peek(q : PriorityQueue(t)) -> option.Option(t) {
-  match q { QueueValue(MkQueue(_, cons(head, _))) -> Some(head); QueueValue(MkQueue(_, nil)) -> None }
+pub fn peek(q : PriorityQueue(t)) -> Option(t) {
+  match q { QueueValue(MkQueue(_, items)) -> if null?(items) { None } else { Some(car(items)) } }
 }
 pub fn size(q : PriorityQueue(t)) -> int { match q { QueueValue(MkQueue(_, items)) -> list.length(items) } }
 pub fn is_empty(q : PriorityQueue(t)) -> bool { size(q) == 0 }

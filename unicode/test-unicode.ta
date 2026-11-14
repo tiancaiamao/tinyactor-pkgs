@@ -3,10 +3,10 @@
 // check. Byte literals are built with str.chr because the v1 compiler
 // accepts no hex int literals and no \xNN string escapes (both rejections
 // reproduced in unicode/README.md).
-import unicode
-import str
-import list
-import os
+import "tinyactor-pkgs:unicode/unicode"
+import "tinyactor:lib/str"
+import "tinyactor:lib/list"
+import "tinyactor:lib/os"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
 

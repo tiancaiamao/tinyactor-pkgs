@@ -1,8 +1,8 @@
 // Probe tests for the shared digit-string base. Division edge cases: zero
 // quotient, divisor greater than dividend, long remainder chains, plus
 // add/sub/mul against known values (fuzzed against Python at development time).
-import num_internal
-import os
+import "tinyactor-pkgs:num_internal/num_internal"
+import "tinyactor:lib/os"
 fn chk(label : string, got : string, want : string) -> int { if got == want { print(label) } else { print(label); print(" got="); print(got); print(" want="); print(want); os.exit(1) }; 0 }
 fn main() -> int {
   chk("PASS div zero quotient", num_internal.div("0", "5"), "0")

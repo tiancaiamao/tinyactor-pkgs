@@ -1,5 +1,5 @@
-import priority_queue
-import os
+import "tinyactor-pkgs:priority_queue/priority_queue"
+import "tinyactor:lib/os"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
 fn main() -> int {

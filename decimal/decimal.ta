@@ -4,8 +4,8 @@
 // to_string: trims trailing fractional zeros ("0.50" -> "0.5", "1.000" -> "1"),
 // never emits a bare trailing dot for integer values, and suppresses negative
 // zero ("-0.0" parses fine but prints "0").
-import result
-import num_internal
+import "tinyactor:lib/result"
+import "tinyactor-pkgs:num_internal/num_internal"
 pub type Decimal { D(int, string, int) }
 pub fn from_int(n : int) -> Decimal { parse_int(str.from_int(n), 0) }
 fn parse_int(s : string, scale : int) -> Decimal { let neg = str.char_at(s, 0) == 45; let d = if neg { str.substr(s, 1, str.length(s)) } else { s }; D(if neg { -1 } else { 1 }, num_internal.norm(d), scale) }

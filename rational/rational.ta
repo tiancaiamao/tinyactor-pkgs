@@ -6,8 +6,8 @@
 // add/sub/mul re-reduce via gcd; div returns Err("division by zero") on a zero
 // rational (make already rejects zero denominators at construction). compare
 // cross-multiplies, so no division is ever performed on magnitudes.
-import result
-import num_internal
+import "tinyactor:lib/result"
+import "tinyactor-pkgs:num_internal/num_internal"
 pub type Rational { R(int, string, string) }
 pub fn make(num : string, den : string) -> Result(Rational, string) {
   if valid_integer(num) == false || valid_integer(den) == false { Err("invalid rational") } else {

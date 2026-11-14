@@ -10,4 +10,4 @@ Semantic commitments:
 - `div` by a zero rational returns `Err("division by zero")` (never panics).
 - `add/sub/mul` re-reduce via gcd; `compare` cross-multiplies, so no magnitude division happens outside reduction. Magnitudes use decimal digit strings, so arithmetic is not limited to native int width (see the 30-digit test).
 
-Run `make test TINYACTOR=/tmp/core-copy` (stages `../num_internal/num_internal.ta` itself).
+Run `make test TINYACTOR=<core repo>`: it vendors the package as its own dependency (`tinyactor.deps` → `vendor/`, `../num_internal` included) and runs the behavior test. No C build is needed.

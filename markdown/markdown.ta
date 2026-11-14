@@ -79,8 +79,8 @@
 //           accumulate most-recent-first and are reversed once in
 //           md_build.
 
-import html
-import result
+import "tinyactor:lib/html"
+import "tinyactor:lib/result"
 
 external fn markdown.raw_parse(s : string) -> a
 

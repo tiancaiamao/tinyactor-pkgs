@@ -4,6 +4,6 @@ Status: implemented — pure TinyActor; no floating-point representation or depe
 
 API: `parse(string) -> Result(Decimal, string)`, `from_int(int) -> Decimal`, `add/sub/mul(Decimal, Decimal) -> Decimal`, `div(Decimal, Decimal) -> Result(Decimal, string)`, `compare(Decimal, Decimal) -> int`, `to_string(Decimal) -> string`.
 
-Ordinary decimal notation only (no exponent). Addition, subtraction, multiplication and comparison are exact. Division keeps 18 fractional decimal places and truncates toward zero; division by zero returns `Err`. Coefficients use decimal digit strings, so arithmetic is not limited to native int width. Run `make test TINYACTOR=/tmp/core-copy`.
+Ordinary decimal notation only (no exponent). Addition, subtraction, multiplication and comparison are exact. Division keeps 18 fractional decimal places and truncates toward zero; division by zero returns `Err`. Coefficients use decimal digit strings, so arithmetic is not limited to native int width. Run `make test TINYACTOR=<core repo>`: it vendors the package as its own dependency (`tinyactor.deps` → `vendor/`, `../num_internal` included) and runs the behavior test. No C build is needed.
 
 `to_string` trims trailing fractional zeros (`0.50` → `0.5`, `1.000` → `1`), never leaves a bare trailing dot for integer values, and suppresses negative zero (`-0.0` prints `0`).

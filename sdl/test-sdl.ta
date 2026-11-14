@@ -1,5 +1,5 @@
-import sdl
-import os
+import "tinyactor-pkgs:sdl/sdl"
+import "tinyactor:lib/os"
 
 fn fail(message) { print(message); os.exit(1) }
 fn main() {

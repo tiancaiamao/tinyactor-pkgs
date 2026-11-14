@@ -1,7 +1,7 @@
 // smoke.ta has four verdicts: PASS, FAIL, SKIP (known missing runtime prerequisite), UNKNOWN.
-import markdown
-import html
-import os
+import "tinyactor-pkgs:markdown/markdown"
+import "tinyactor:lib/html"
+import "tinyactor:lib/os"
 
 fn main() {
   match markdown.parse("# hello") {

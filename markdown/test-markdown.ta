@@ -22,11 +22,11 @@
 // Expected: "ok - <label>" for every check, then PASS.
 // expect: PASS
 
-import markdown
-import html
-import result
-import str
-import test
+import "tinyactor-pkgs:markdown/markdown"
+import "tinyactor:lib/html"
+import "tinyactor:lib/result"
+import "tinyactor:lib/str"
+import "tinyactor:lib/test"
 
 // ---- canonical Node serialization (structural comparison substrate) ----
 
@@ -34,7 +34,6 @@ fn show_attrs(as) {
   if null?(as) { "" } else {
     let one = match car(as) {
       Attr(n, v) -> if null?(v) { str.concat(" ", n) } else { str.concat(" ", str.concat(n, str.concat("=\"", str.concat(v, "\"")))) }
-      Flag(n) -> str.concat(" ", n)
     }
     str.concat(one, show_attrs(cdr(as)))
   }

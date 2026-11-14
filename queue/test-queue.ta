@@ -1,6 +1,6 @@
-import queue
-import option
-import os
+import "tinyactor-pkgs:queue/queue"
+import "tinyactor:lib/option"
+import "tinyactor:lib/os"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
 fn main() -> int {

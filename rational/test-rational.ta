@@ -1,6 +1,6 @@
 // Tests are written before implementation; each package is exercised against an isolated origin/main core copy.
-import rational
-import os
+import "tinyactor-pkgs:rational/rational"
+import "tinyactor:lib/os"
 fn fail(message : string) -> int { print(message); os.exit(1) }
 fn need(r : Result(Rational, string)) -> Rational { match r { Ok(x) -> x; Err(m) -> fail(m) } }
 fn is(label : string, got : string, want : string) -> int { if got == want { print(label) } else { print(label); print(" got="); print(got); print(" want="); print(want); os.exit(1) }; 0 }

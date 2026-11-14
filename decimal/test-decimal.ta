@@ -1,6 +1,6 @@
 // Tests are written before implementation; each package is exercised against an isolated origin/main core copy.
-import decimal
-import os
+import "tinyactor-pkgs:decimal/decimal"
+import "tinyactor:lib/os"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
 fn need(r : Result(Decimal, string)) -> Decimal { match r { Ok(x) -> x; Err(m) -> fail(m) } }

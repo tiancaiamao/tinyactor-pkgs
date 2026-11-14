@@ -1,7 +1,7 @@
-import regexp
-import os
-import list
-import str
+import "tinyactor-pkgs:regexp/regexp"
+import "tinyactor:lib/os"
+import "tinyactor:lib/list"
+import "tinyactor:lib/str"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
 fn check(pattern : string, text : string, want : bool) {

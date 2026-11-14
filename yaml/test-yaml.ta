@@ -22,11 +22,11 @@
 // Expected: "ok - <label>" for every check, then PASS.
 // expect: PASS
 
-import yaml
-import result
-import dict
-import str
-import test
+import "tinyactor-pkgs:yaml/yaml"
+import "tinyactor:lib/result"
+import "tinyactor:lib/dict"
+import "tinyactor:lib/str"
+import "tinyactor:lib/test"
 
 // ---- canonical Yaml serialization (structural comparison substrate) ----
 //

@@ -1,5 +1,5 @@
-import sqlite
-import os
+import "tinyactor-pkgs:sqlite/sqlite"
+import "tinyactor:lib/os"
 
 fn fail(message) { print(message); os.exit(1) }
 fn main() {
