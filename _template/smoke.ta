@@ -1,0 +1,18 @@
+// Minimal package smoke test: import the package's own declaration file by its
+// tree name, call the C function, check the value.
+//
+// The load is lazy (first call), so a missing dylib fails here with an explicit
+// error and a non-zero exit — it never returns nil. Diagnostics:
+// docs/c-module.md §6.2 in the core repo.
+import "example.org/template:template"
+import "tinyactor:lib/os"
+
+fn main() {
+  let answer = template.answer()
+  if answer == 42 {
+    print("PASS template.answer() = 42")
+  } else {
+    print("FAIL template.answer()")
+    os.exit(1)
+  }
+}

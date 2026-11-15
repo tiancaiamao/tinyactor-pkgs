@@ -1,5 +1,5 @@
 CC ?= cc
-TINYACTOR ?= ../tinyactor
+TINYACTOR ?= ../../tinyactor
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 EXT := dylib
@@ -13,18 +13,23 @@ SHARED_FLAGS :=
 SQLITE_CFLAGS :=
 SQLITE_LIBS :=
 endif
-OUT := sqlite.$(EXT)
+OUT := lib/sqlite.$(EXT)
 
 .PHONY: all clean test
 all: $(OUT)
 
-$(OUT): sqlite_glue.c $(TINYACTOR)/ta.h
-	$(CC) -Wall -Wextra -std=c99 -O2 -fPIC -shared $(SHARED_FLAGS) $(SQLITE_CFLAGS) -I$(TINYACTOR) -o $@ $< $(SQLITE_LIBS) -lsqlite3
+$(OUT): sqlite_glue.c $(TINYACTOR)/ta.h | lib
+	$(CC) -Wall -Wextra -std=c99 -O2 -fPIC -shared $(SHARED_FLAGS) $(SQLITE_CFLAGS) -I$(TINYACTOR) -o $@ sqlite_glue.c $(SQLITE_LIBS) -lsqlite3
+
+lib:
+	mkdir -p lib
+
+# 运行期按 cwd 相对路径找 lib/sqlite.$(EXT)，所以测试在包目录里跑。
+test: all
+	printf 'tinyactor\t%s\ntinyactor-pkgs\t..\n' '$(TINYACTOR)' > tinyactor.deps
+	$(TINYACTOR)/tinyactor vendor
+	$(TINYACTOR)/tinyactor run smoke.ta
+	$(TINYACTOR)/tinyactor run test-sqlite.ta
 
 clean:
-	rm -f $(OUT)
-
-test: all
-	cp sqlite.ta $(TINYACTOR)/lib/sqlite.ta
-	cp $(OUT) $(TINYACTOR)/lib/$(OUT)
-		cd $(TINYACTOR) && ./tinyactor run --no-cache $(CURDIR)/smoke.ta && ./tinyactor run --no-cache $(CURDIR)/test-sqlite.ta
+	rm -rf lib vendor tinyactor.deps tinyactor.lock

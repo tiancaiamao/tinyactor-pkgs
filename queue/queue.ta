@@ -6,8 +6,8 @@
 // API: new() -> Queue(t); push(Queue(t), t) -> Queue(t);
 // pop(Queue(t)) -> Pop(t); peek(Queue(t)) -> Option(t);
 // size(Queue(t)) -> int; is_empty(Queue(t)) -> bool.
-import option
-import list
+import "tinyactor:lib/option"
+import "tinyactor:lib/list"
 
 type QueueState(t) { MkQueue(front, rear, count) }
 pub type Queue(t) { QueueValue(state) }
@@ -35,12 +35,12 @@ fn pop_rear(rear, n) {
 pub fn peek(q : Queue(t)) -> option.Option(t) {
   match q {
     QueueValue(MkQueue(front, rear, _)) -> {
-      if null?(front) { peek_rear(rear) } else { Some(car(front)) }
+      if null?(front) { peek_rear(rear) } else { option.Some(car(front)) }
     }
   }
 }
 fn peek_rear(rear) {
-  if null?(rear) { None } else { Some(car(list.reverse(rear))) }
+  if null?(rear) { option.None } else { option.Some(car(list.reverse(rear))) }
 }
 pub fn size(q : Queue(t)) -> int { match q { QueueValue(MkQueue(_, _, n)) -> n } }
 pub fn is_empty(q : Queue(t)) -> bool { size(q) == 0 }

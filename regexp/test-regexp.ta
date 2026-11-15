@@ -1,13 +1,13 @@
-import regexp
-import os
-import list
-import str
+import "tinyactor-pkgs:regexp/regexp"
+import "tinyactor:lib/os"
+import "tinyactor:lib/list"
+import "tinyactor:lib/str"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
 fn check(pattern : string, text : string, want : bool) {
   match regexp.compile(pattern) {
-    Compiled(re) -> if regexp.matches(re, text) != want { print(pattern); print(text); fail("FAIL regexp matches") }
-    BadPattern(_) -> fail("FAIL regexp compile")
+    regexp.Compiled(re) -> if regexp.matches(re, text) != want { print(pattern); print(text); fail("FAIL regexp matches") }
+    regexp.BadPattern(_) -> fail("FAIL regexp compile")
   }
 }
 fn main() -> int {
@@ -28,10 +28,10 @@ fn main() -> int {
   check("", "", true)
   check("((a*)*)b", repeat_a(30), false)
 
-  match regexp.compile("[") { BadPattern(_) -> print("PASS invalid pattern"); _ -> fail("FAIL invalid pattern") }
-  match regexp.compile("a**") { BadPattern(_) -> print("PASS invalid quantifier"); _ -> fail("FAIL invalid quantifier") }
-  match regexp.compile("(a") { BadPattern(_) -> print("PASS unclosed group"); _ -> fail("FAIL unclosed group") }
-  match regexp.compile("a+") { Compiled(r) -> if regexp.matches(r, "aa") == false { fail("FAIL matches") }; _ -> fail("FAIL compile") }
+  match regexp.compile("[") { regexp.BadPattern(_) -> print("PASS invalid pattern"); _ -> fail("FAIL invalid pattern") }
+  match regexp.compile("a**") { regexp.BadPattern(_) -> print("PASS invalid quantifier"); _ -> fail("FAIL invalid quantifier") }
+  match regexp.compile("(a") { regexp.BadPattern(_) -> print("PASS unclosed group"); _ -> fail("FAIL unclosed group") }
+  match regexp.compile("a+") { regexp.Compiled(r) -> if regexp.matches(r, "aa") == false { fail("FAIL matches") }; _ -> fail("FAIL compile") }
 
   if regexp.find("a+", "xxaa") != "aa" { fail("FAIL find") }
   let all = regexp.find_all("a+", "xaa yaaa")

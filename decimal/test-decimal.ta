@@ -1,9 +1,10 @@
 // Tests are written before implementation; each package is exercised against an isolated origin/main core copy.
-import decimal
-import os
+import "tinyactor-pkgs:decimal/decimal"
+import "tinyactor:lib/os"
+import "tinyactor:lib/result"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
-fn need(r : Result(Decimal, string)) -> Decimal { match r { Ok(x) -> x; Err(m) -> fail(m) } }
+fn need(r : result.Result(decimal.Decimal, string)) -> decimal.Decimal { match r { result.Ok(x) -> x; result.Err(m) -> fail(m) } }
 fn is(label : string, got : string, want : string) -> int { if got == want { print(label) } else { print(label); print(" got="); print(got); print(" want="); print(want); os.exit(1) }; 0 }
 fn main() -> int {
   // 0.1 + 0.2 is exactly 0.3 — the case binary floating point gets wrong, and the reason decimal exists.
@@ -32,8 +33,8 @@ fn main() -> int {
   is("PASS decimal division integer result", decimal.to_string(need(decimal.div(decimal.from_int(10), decimal.from_int(2)))), "5")
   is("PASS decimal division middle zeros", decimal.to_string(need(decimal.div(need(decimal.parse("1001001001001001001001")), decimal.from_int(3)))), "333667000333667000333.666666666666666666")
   is("PASS decimal division mixed scale", decimal.to_string(need(decimal.div(need(decimal.parse("0.1")), need(decimal.parse("0.001"))))), "100")
-  match decimal.div(decimal.from_int(1), decimal.from_int(0)) { Err(_) -> print("PASS decimal division by zero"); Ok(_) -> fail("FAIL decimal division by zero") }
-  match decimal.parse("1.2x") { Err(_) -> print("PASS decimal reject invalid"); _ -> fail("FAIL decimal reject invalid") }
-  match decimal.parse(".") { Err(_) -> print("PASS decimal reject dot"); _ -> fail("FAIL decimal reject dot") }
+  match decimal.div(decimal.from_int(1), decimal.from_int(0)) { result.Err(_) -> print("PASS decimal division by zero"); result.Ok(_) -> fail("FAIL decimal division by zero") }
+  match decimal.parse("1.2x") { result.Err(_) -> print("PASS decimal reject invalid"); _ -> fail("FAIL decimal reject invalid") }
+  match decimal.parse(".") { result.Err(_) -> print("PASS decimal reject dot"); _ -> fail("FAIL decimal reject dot") }
   0
 }

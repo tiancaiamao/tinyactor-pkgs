@@ -3,10 +3,10 @@
 // check. Byte literals are built with str.chr because the v1 compiler
 // accepts no hex int literals and no \xNN string escapes (both rejections
 // reproduced in unicode/README.md).
-import unicode
-import str
-import list
-import os
+import "tinyactor-pkgs:unicode/unicode"
+import "tinyactor:lib/str"
+import "tinyactor:lib/list"
+import "tinyactor:lib/os"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
 
@@ -22,17 +22,17 @@ fn enc_all(l) -> string {
 
 fn expect_decode(s : string, i : int, want_cp : int, want_size : int, label : string) {
   match unicode.decode_at(s, i) {
-    Decoded(cp, size) -> if cp != want_cp || size != want_size {
+    unicode.Decoded(cp, size) -> if cp != want_cp || size != want_size {
       print(label); print(cp); print(size); fail("FAIL decode (wrong value)")
     }
-    Invalid -> { print(label); fail("FAIL decode (got Invalid)") }
+    unicode.Invalid -> { print(label); fail("FAIL decode (got Invalid)") }
   }
 }
 
 fn expect_invalid(s : string, i : int, label : string) {
   match unicode.decode_at(s, i) {
-    Invalid -> 0
-    Decoded(cp, size) -> { print(label); print(cp); print(size); fail("FAIL expected Invalid") }
+    unicode.Invalid -> 0
+    unicode.Decoded(cp, size) -> { print(label); print(cp); print(size); fail("FAIL expected Invalid") }
   }
 }
 
@@ -41,8 +41,8 @@ fn round_trip(cp : int, want_size : int) {
   let s = unicode.encode(cp)
   if str.length(s) != want_size { print(cp); fail("FAIL encode byte length") }
   match unicode.decode_at(s, 0) {
-    Decoded(got, size) -> if got != cp || size != want_size { print(cp); fail("FAIL round trip") }
-    Invalid -> { print(cp); fail("FAIL round trip got Invalid") }
+    unicode.Decoded(got, size) -> if got != cp || size != want_size { print(cp); fail("FAIL round trip") }
+    unicode.Invalid -> { print(cp); fail("FAIL round trip got Invalid") }
   }
 }
 
@@ -130,15 +130,15 @@ fn main() -> int {
   // ---- iteration: codepoint + byte span ----
   let st = unicode.steps(enc_all(cons(65, cons(20013, cons(128512, nil)))))
   if list.length(st) != 3 { fail("FAIL steps count") }
-  match list.nth(st, 0) { Step(cp, start, size) -> if cp != 65 || start != 0 || size != 1 { fail("FAIL step 0") }; _ -> fail("FAIL step 0 shape") }
-  match list.nth(st, 1) { Step(cp, start, size) -> if cp != 20013 || start != 1 || size != 3 { fail("FAIL step 1") }; _ -> fail("FAIL step 1 shape") }
-  match list.nth(st, 2) { Step(cp, start, size) -> if cp != 128512 || start != 4 || size != 4 { fail("FAIL step 2") }; _ -> fail("FAIL step 2 shape") }
+  match list.nth(st, 0) { unicode.Step(cp, start, size) -> if cp != 65 || start != 0 || size != 1 { fail("FAIL step 0") }; _ -> fail("FAIL step 0 shape") }
+  match list.nth(st, 1) { unicode.Step(cp, start, size) -> if cp != 20013 || start != 1 || size != 3 { fail("FAIL step 1") }; _ -> fail("FAIL step 1 shape") }
+  match list.nth(st, 2) { unicode.Step(cp, start, size) -> if cp != 128512 || start != 4 || size != 4 { fail("FAIL step 2") }; _ -> fail("FAIL step 2 shape") }
   if list.length(unicode.steps("")) != 0 { fail("FAIL steps empty") }
   // invalid byte appears as cp = -1 with span 1
   let bad = unicode.steps(bs(cons(195, cons(65, nil))))
   if list.length(bad) != 2 { fail("FAIL steps invalid count") }
-  match list.nth(bad, 0) { Step(cp, start, size) -> if cp != -1 || start != 0 || size != 1 { fail("FAIL step invalid") }; _ -> fail("FAIL step invalid shape") }
-  match list.nth(bad, 1) { Step(cp, start, size) -> if cp != 65 || start != 1 || size != 1 { fail("FAIL step after invalid") }; _ -> fail("FAIL step shape") }
+  match list.nth(bad, 0) { unicode.Step(cp, start, size) -> if cp != -1 || start != 0 || size != 1 { fail("FAIL step invalid") }; _ -> fail("FAIL step invalid shape") }
+  match list.nth(bad, 1) { unicode.Step(cp, start, size) -> if cp != 65 || start != 1 || size != 1 { fail("FAIL step after invalid") }; _ -> fail("FAIL step shape") }
 
   // ---- ascii classification ----
   if unicode.is_ascii("hello, world") == false { fail("FAIL is_ascii plain") }

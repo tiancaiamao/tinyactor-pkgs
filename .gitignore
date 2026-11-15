@@ -1,2 +1,7 @@
 *.dylib
-*.so*.tmp
+*.so
+
+# 生成物：vendor/ 来自 tinyactor.deps，各包的 lib/ 由 make 产出
+tinyactor.deps
+vendor/
+lib/

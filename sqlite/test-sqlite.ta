@@ -1,52 +1,53 @@
-import sqlite
-import os
+import "tinyactor-pkgs:sqlite/sqlite"
+import "tinyactor:lib/os"
+import "tinyactor:lib/result"
 
 fn fail(message) { print(message); os.exit(1) }
 fn main() {
   match sqlite.open(":memory:") {
-    Err(_) -> fail("FAIL open memory")
-    Ok(db) -> {
+    result.Err(_) -> fail("FAIL open memory")
+    result.Ok(db) -> {
       sqlite.exec(db, "create table item (id integer, name text)")
       match sqlite.prepare(db, "insert into item values (?, ?)") {
-        Err(_) -> fail("FAIL prepare insert")
-        Ok(stmt) -> {
-                    match sqlite.bind_int(stmt, 1, 1) { Ok(_) -> 0; _ -> fail("FAIL bind int") }
-          match sqlite.bind_text(stmt, 2, "one") { Ok(_) -> 0; _ -> fail("FAIL bind text") }
-          match sqlite.next(stmt) { Ok(false) -> print("PASS parameter binding"); _ -> fail("FAIL bound insert") }
+        result.Err(_) -> fail("FAIL prepare insert")
+        result.Ok(stmt) -> {
+                    match sqlite.bind_int(stmt, 1, 1) { result.Ok(_) -> 0; _ -> fail("FAIL bind int") }
+          match sqlite.bind_text(stmt, 2, "one") { result.Ok(_) -> 0; _ -> fail("FAIL bind text") }
+          match sqlite.next(stmt) { result.Ok(false) -> print("PASS parameter binding"); _ -> fail("FAIL bound insert") }
           sqlite.finalize(stmt)
         }
       }
       match sqlite.exec(db, "insert into missing values (1)") {
-        Err(_) -> print("PASS bad SQL rejected")
+        result.Err(_) -> print("PASS bad SQL rejected")
         _ -> fail("FAIL bad SQL accepted")
       }
       match sqlite.prepare(db, "select id, name from item") {
-        Err(_) -> fail("FAIL prepare select")
-        Ok(stmt) -> {
+        result.Err(_) -> fail("FAIL prepare select")
+        result.Ok(stmt) -> {
           match sqlite.next(stmt) {
-            Ok(true) -> {
+            result.Ok(true) -> {
               if sqlite.column_text(stmt, 0) == "1" {
                 if sqlite.column_text(stmt, 1) == "one" { print("PASS CRUD row") } else { fail("FAIL CRUD name") }
               } else { fail("FAIL CRUD id") }
             }
             _ -> fail("FAIL CRUD result")
           }
-          match sqlite.next(stmt) { Ok(false) -> 0; _ -> fail("FAIL end of rows") }
+          match sqlite.next(stmt) { result.Ok(false) -> 0; _ -> fail("FAIL end of rows") }
           sqlite.finalize(stmt)
         }
       }
             match sqlite.open("/etc/hosts") {
-        Err(_) -> fail("FAIL open non-SQLite file")
-        Ok(other) -> {
+        result.Err(_) -> fail("FAIL open non-SQLite file")
+        result.Ok(other) -> {
           match sqlite.exec(other, "select 1") {
-            Err(_) -> print("PASS non-SQLite file rejected")
+            result.Err(_) -> print("PASS non-SQLite file rejected")
             _ -> fail("FAIL non-SQLite file accepted")
           }
           sqlite.close(other)
         }
       }
             match sqlite.open("/no/such/directory/sqlite.db") {
-        Err(message) -> {
+        result.Err(message) -> {
           if str.index_of(message, "unable to open") >= 0 { print("PASS open failure rejected") }
           else { fail("FAIL open failure missing cause") }
         }

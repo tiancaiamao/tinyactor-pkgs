@@ -79,8 +79,8 @@
 //           accumulate most-recent-first and are reversed once in
 //           md_build.
 
-import html
-import result
+import "tinyactor:lib/html"
+import "tinyactor:lib/result"
 
 external fn markdown.raw_parse(s : string) -> a
 
@@ -346,9 +346,9 @@ pub fn fold(evs : List(a)) -> List(html.Node) {
 // (the C side's -1 hard-error signal); markdown itself has no syntax
 // errors — everything parses to something, and the empty document is
 // Ok(nil).
-pub fn parse(text : string) -> Result(List(html.Node), string) {
+pub fn parse(text : string) -> result.Result(List(html.Node), string) {
   match markdown.raw_parse(text) {
-    -1 -> Err("markdown parse failed: out of memory")
-    evs -> Ok(fold(evs))
+    -1 -> result.Err("markdown parse failed: out of memory")
+    evs -> result.Ok(fold(evs))
   }
 }

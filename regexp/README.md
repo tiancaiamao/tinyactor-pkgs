@@ -41,7 +41,7 @@ Implementation note: syntax rejection currently covers malformed groups/classes 
 
 Command: `make -C regexp test TINYACTOR=/Users/genius/project/tinyactor`
 
-The Makefile copies the core tree to a fresh `/tmp/ta-regexp.*`, installs only `regexp.ta` into that copy, and runs `test-regexp.ta` with `--no-cache`. Output:
+The Makefile writes `tinyactor.deps` (`tinyactor` → core repo, `tinyactor-pkgs` → this repo), vendors both trees, then runs `test-regexp.ta` from the package directory. Output:
 
 ```text
 PASS invalid pattern

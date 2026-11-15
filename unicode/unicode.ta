@@ -38,8 +38,8 @@
 // classification. NO case mapping beyond ASCII (core str.upper/lower),
 // NO general category tables (whitespace, fullwidth, digits, ...), NO
 // normalization, NO grapheme clusters.
-import str
-import list
+import "tinyactor:lib/str"
+import "tinyactor:lib/list"
 
 // Decode: Decoded(codepoint, byte_size) on a strictly valid sequence at
 // the given byte index; Invalid on every rejection case listed above.
@@ -148,7 +148,7 @@ fn count_from(s : string, i : int) -> int {
 }
 
 // steps_from: list every codepoint from byte index i with its span.
-fn steps_from(s : string, i : int) -> list(Step) {
+fn steps_from(s : string, i : int) -> List(Step) {
   if i >= str.length(s) {
     nil
   } else {
@@ -194,7 +194,7 @@ pub fn codepoint_at(s : string, k : int) -> int {
 
 // steps: iterate every codepoint with its byte span; see Step. Invalid
 // bytes yield Step(-1, i, 1).
-pub fn steps(s : string) -> list(Step) {
+pub fn steps(s : string) -> List(Step) {
   steps_from(s, 0)
 }
 

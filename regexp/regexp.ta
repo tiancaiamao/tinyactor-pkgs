@@ -1,8 +1,9 @@
 // Pure TinyActor regexp parser and Thompson-style finite-state simulator.
 // State IDs and transition maps are immutable; work is bounded by NFA size.
-import str
-import list
-import dict
+import "tinyactor:lib/str"
+import "tinyactor:lib/list"
+import "tinyactor:lib/dict"
+import "tinyactor:lib/option"
 
 pub type ParseResult { Parsed(ast); Invalid(reason) }
 pub type Ast { Alt(left, right); Seq(left, right); Star(node); Plus(node); Optional(node); Lit(ch); Class(ranges, negated); Any(marker); Begin(marker); End(marker); Group(node); EpsilonNode(marker) }
@@ -134,8 +135,8 @@ fn close(todo, eps, trans, text, pos, seen, acc) {
   if null?(todo) { acc } else {
     let id = car(todo)
     if dict.has_key(seen, id) { close(cdr(todo), eps, trans, text, pos, seen, acc) } else {
-      let more = match dict.get(eps, id) { Some(xs) -> xs; None -> nil }
-      let edge_tos = match dict.get(trans, id) { Some(Edge(Begin(_), target)) -> if pos == 0 { cons(target, nil) } else { nil }; Some(Edge(End(_), target)) -> if pos == str.length(text) { cons(target, nil) } else { nil }; _ -> nil }
+      let more = match dict.get(eps, id) { option.Some(xs) -> xs; option.None -> nil }
+      let edge_tos = match dict.get(trans, id) { option.Some(Edge(Begin(_), target)) -> if pos == 0 { cons(target, nil) } else { nil }; option.Some(Edge(End(_), target)) -> if pos == str.length(text) { cons(target, nil) } else { nil }; _ -> nil }
       close(list.append(cdr(todo), list.append(more, edge_tos)), eps, trans, text, pos, dict.insert(seen, id, true), cons(id, acc))
     }
   }
@@ -144,8 +145,8 @@ fn step(active, trans, ch, pos, acc) {
   if null?(active) { list.reverse(acc) } else {
     let id = car(active)
     let next = match dict.get(trans, id) {
-      Some(Edge(matcher, target)) -> if accepts(matcher, ch, pos) { cons(target, acc) } else { acc }
-      None -> acc
+      option.Some(Edge(matcher, target)) -> if accepts(matcher, ch, pos) { cons(target, acc) } else { acc }
+      option.None -> acc
     }
     step(cdr(active), trans, ch, pos, next)
   }
@@ -164,10 +165,10 @@ fn class_has(rs, ch) { if null?(rs) { false } else { let r = car(rs); if ch >= c
 fn has(xs, x) { if null?(xs) { false } else if car(xs) == x { true } else { has(cdr(xs), x) } }
 
 pub fn find(pattern : string, text : string) -> string { match compile(pattern) { Compiled(re) -> match find_range(re, text, 0) { FoundRange(a, b) -> str.substr(text, a, b - a); NotFound -> "" }; BadPattern(_) -> "" } }
-pub fn find_all(pattern : string, text : string) -> list(string) {
+pub fn find_all(pattern : string, text : string) -> List(string) {
   match compile(pattern) { Compiled(re) -> all_ranges(re, text, 0, nil); BadPattern(_) -> nil }
 }
-fn all_ranges(re : Regex, text : string, pos : int, acc : list(string)) -> list(string) {
+fn all_ranges(re : Regex, text : string, pos : int, acc : List(string)) -> List(string) {
   if pos > str.length(text) { list.reverse(acc) } else {
     match find_range(re, text, pos) {
       NotFound -> list.reverse(acc)

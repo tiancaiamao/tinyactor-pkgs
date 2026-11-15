@@ -1,10 +1,11 @@
 // smoke.ta has four verdicts: PASS, FAIL, SKIP (known missing runtime prerequisite), UNKNOWN.
-import yaml
-import os
+import "tinyactor-pkgs:yaml/yaml"
+import "tinyactor:lib/os"
+import "tinyactor:lib/result"
 
 fn main() {
   match yaml.try_parse("name: Ada\n") {
-    Err(_) -> { print("FAIL yaml parse"); os.exit(1) }
-    Ok(_) -> print("PASS yaml parse")
+    result.Err(_) -> { print("FAIL yaml parse"); os.exit(1) }
+    result.Ok(_) -> print("PASS yaml parse")
   }
 }

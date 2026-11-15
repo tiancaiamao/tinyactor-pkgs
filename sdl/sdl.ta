@@ -1,8 +1,8 @@
 // SDL2 package API: intentionally limited to lifecycle, a basic window, and
 // event pumping. Window is a mutable opaque handle: C operations act on the
 // same SDL_Window; callers must destroy it explicitly. Actor exit can leak it.
-import option
-import result
+import "tinyactor:lib/option"
+import "tinyactor:lib/result"
 
 type Window { WindowHandle(int) }
 
@@ -14,42 +14,42 @@ external fn sdl.raw_poll_event() -> int
 external fn sdl.raw_delay(int) -> int
 external fn sdl.raw_quit() -> int
 
-pub fn init() -> Result(unit, string) {
+pub fn init() -> result.Result(int, string) {
   match sdl.raw_init() {
-    -1 -> Err(sdl.raw_error())
-    _ -> Ok(())
+    -1 -> result.Err(sdl.raw_error())
+    code -> result.Ok(code)
   }
 }
-pub fn create_window(title: string, width: int, height: int) -> Result(Window, string) {
+pub fn create_window(title: string, width: int, height: int) -> result.Result(Window, string) {
   match sdl.raw_create_window(title, width, height) {
-    -1 -> Err(sdl.raw_error())
-    handle -> Ok(WindowHandle(handle))
+    -1 -> result.Err(sdl.raw_error())
+    handle -> result.Ok(WindowHandle(handle))
   }
 }
-pub fn destroy_window(window: Window) -> Result(unit, string) {
+pub fn destroy_window(window: Window) -> result.Result(int, string) {
   match window {
     WindowHandle(handle) -> match sdl.raw_destroy_window(handle) {
-      -1 -> Err("window destroy failed")
-      _ -> Ok(())
+      -1 -> result.Err("window destroy failed")
+      code -> result.Ok(code)
     }
   }
 }
 // Returns Some(event type) or None when the queue is empty.
-pub fn poll_event() -> Option(int) {
+pub fn poll_event() -> option.Option(int) {
   match sdl.raw_poll_event() {
-    0 -> None
-    event_type -> Some(event_type)
+    0 -> option.None
+    event_type -> option.Some(event_type)
   }
 }
-pub fn delay(milliseconds: int) -> Result(unit, string) {
+pub fn delay(milliseconds: int) -> result.Result(int, string) {
   match sdl.raw_delay(milliseconds) {
-    -1 -> Err("delay failed")
-    _ -> Ok(())
+    -1 -> result.Err("delay failed")
+    code -> result.Ok(code)
   }
 }
-pub fn quit() -> Result(unit, string) {
+pub fn quit() -> result.Result(int, string) {
   match sdl.raw_quit() {
-    -1 -> Err("quit failed")
-    _ -> Ok(())
+    -1 -> result.Err("quit failed")
+    code -> result.Ok(code)
   }
 }

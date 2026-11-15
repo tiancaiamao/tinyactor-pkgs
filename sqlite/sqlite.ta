@@ -1,10 +1,10 @@
 // SQLite package API
 // Handles are mutable opaque integers. Raw C failures are -1; nil is reserved
 // for retryable absence. The TA layer exposes Result for open/prepare/exec and
-// next; close/finalize return Result(unit). Rows are lists of (column name,
+// next; close/finalize return Result(int). Rows are lists of (column name,
 // text value) pairs: this preserves column names/order and can be folded into
 // the project's dict API without adding a package-specific map representation.
-import result
+import "tinyactor:lib/result"
 
 external fn sqlite.raw_open(string) -> int
 external fn sqlite.raw_open_error() -> string
@@ -20,36 +20,36 @@ external fn sqlite.raw_bind_int(int, int, int) -> int
 external fn sqlite.raw_bind_text(int, int, string) -> int
 external fn sqlite.raw_finalize(int) -> int
 
-pub fn open(path: string) -> Result(int, string) {
+pub fn open(path: string) -> result.Result(int, string) {
   match sqlite.raw_open(path) {
-    -1 -> Err(sqlite.raw_open_error())
-    db -> Ok(db)
+    -1 -> result.Err(sqlite.raw_open_error())
+    db -> result.Ok(db)
   }
 }
 pub fn error(db: int) -> string { sqlite.raw_error(db) }
-pub fn close(db: int) -> Result(unit, string) {
+pub fn close(db: int) -> result.Result(int, string) {
   match sqlite.raw_close(db) {
-    -1 -> Err(sqlite.error(db))
-    _ -> Ok(())
+    -1 -> result.Err(error(db))
+    code -> result.Ok(code)
   }
 }
-pub fn exec(db: int, sql: string) -> Result(int, string) {
+pub fn exec(db: int, sql: string) -> result.Result(int, string) {
   match sqlite.raw_exec(db, sql) {
-    -1 -> Err(sqlite.error(db))
-    count -> Ok(count)
+    -1 -> result.Err(error(db))
+    count -> result.Ok(count)
   }
 }
-pub fn prepare(db: int, sql: string) -> Result(int, string) {
+pub fn prepare(db: int, sql: string) -> result.Result(int, string) {
   match sqlite.raw_prepare(db, sql) {
-    -1 -> Err(sqlite.error(db))
-    stmt -> Ok(stmt)
+    -1 -> result.Err(error(db))
+    stmt -> result.Ok(stmt)
   }
 }
-pub fn next(stmt: int) -> Result(bool, string) {
+pub fn next(stmt: int) -> result.Result(bool, string) {
   match sqlite.raw_step(stmt) {
-    -1 -> Err("step failed")
-    0 -> Ok(false)
-    1 -> Ok(true)
+    -1 -> result.Err("step failed")
+    0 -> result.Ok(false)
+    1 -> result.Ok(true)
   }
 }
 pub fn row(stmt: int) -> List(Pair(string, string)) {
@@ -76,21 +76,21 @@ fn reverse_into(xs, acc) {
 pub fn column_count(stmt: int) -> int { sqlite.raw_column_count(stmt) }
 pub fn column_name(stmt: int, index: int) -> string { sqlite.raw_column_name(stmt, index) }
 pub fn column_text(stmt: int, index: int) -> string { sqlite.raw_column_text(stmt, index) }
-pub fn bind_int(stmt: int, index: int, value: int) -> Result(unit, string) {
+pub fn bind_int(stmt: int, index: int, value: int) -> result.Result(int, string) {
   match sqlite.raw_bind_int(stmt, index, value) {
-    -1 -> Err("bind failed")
-    _ -> Ok(())
+    -1 -> result.Err("bind failed")
+    code -> result.Ok(code)
   }
 }
-pub fn bind_text(stmt: int, index: int, value: string) -> Result(unit, string) {
+pub fn bind_text(stmt: int, index: int, value: string) -> result.Result(int, string) {
   match sqlite.raw_bind_text(stmt, index, value) {
-    -1 -> Err("bind failed")
-    _ -> Ok(())
+    -1 -> result.Err("bind failed")
+    code -> result.Ok(code)
   }
 }
-pub fn finalize(stmt: int) -> Result(unit, string) {
+pub fn finalize(stmt: int) -> result.Result(int, string) {
   match sqlite.raw_finalize(stmt) {
-    -1 -> Err("finalize failed")
-    _ -> Ok(())
+    -1 -> result.Err("finalize failed")
+    code -> result.Ok(code)
   }
 }

@@ -96,9 +96,9 @@ are nested, never 3-arg.)
 
 ## Test evidence
 
-Command: `make test TINYACTOR=/path/to/tinyactor` (the Makefile copies
-the core tree into a fresh `/tmp/ta-unicode.*`, installs only
-`unicode.ta` there, runs `test-unicode.ta` with `--no-cache`).
+Command: `make test TINYACTOR=<core repo>` (the Makefile writes
+`tinyactor.deps` — `tinyactor` → core repo, `tinyactor-pkgs` → this repo —
+vendors both trees, then runs `test-unicode.ta` from the package directory).
 
 Output: `PASS unicode tests`, exit 0. Coverage: all four encode/decode
 length classes at boundary codepoints (U+0000, U+007F, U+0080, U+07FF,

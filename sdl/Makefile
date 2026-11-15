@@ -1,5 +1,5 @@
 CC ?= cc
-TINYACTOR ?= ../tinyactor
+TINYACTOR ?= ../../tinyactor
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 EXT := dylib
@@ -10,22 +10,23 @@ SHARED_FLAGS :=
 endif
 SDL_CFLAGS := $(shell sdl2-config --cflags)
 SDL_LIBS := $(shell sdl2-config --libs)
-OUT := sdl.$(EXT)
+OUT := lib/sdl.$(EXT)
 
 .PHONY: all clean test
 all: $(OUT)
 
-$(OUT): sdl_glue.c $(TINYACTOR)/ta.h
-	$(CC) -Wall -Wextra -std=c99 -O2 -fPIC -shared $(SHARED_FLAGS) $(SDL_CFLAGS) -I$(TINYACTOR) -o $@ $< $(SDL_LIBS)
+$(OUT): sdl_glue.c $(TINYACTOR)/ta.h | lib
+	$(CC) -Wall -Wextra -std=c99 -O2 -fPIC -shared $(SHARED_FLAGS) $(SDL_CFLAGS) -I$(TINYACTOR) -o $@ sdl_glue.c $(SDL_LIBS)
+
+lib:
+	mkdir -p lib
+
+# 运行期按 cwd 相对路径找 lib/sdl.$(EXT)，所以测试在包目录里跑；无显示器用 dummy 驱动。
+test: all
+	printf 'tinyactor\t%s\ntinyactor-pkgs\t..\n' '$(TINYACTOR)' > tinyactor.deps
+	$(TINYACTOR)/tinyactor vendor
+	SDL_VIDEODRIVER=dummy $(TINYACTOR)/tinyactor run smoke.ta
+	SDL_VIDEODRIVER=dummy $(TINYACTOR)/tinyactor run test-sdl.ta
 
 clean:
-	rm -f $(OUT)
-
-test: all
-	@set -e; tmp=$$(mktemp -d /tmp/tinyactor-sdl.XXXXXX); \
-	trap 'rm -rf "$$tmp"' EXIT; \
-	cp -R $(TINYACTOR) "$$tmp/tinyactor"; \
-	cp sdl.ta $(OUT) "$$tmp/tinyactor/lib/"; \
-	cd "$$tmp/tinyactor"; \
-	SDL_VIDEODRIVER=dummy ./tinyactor run --no-cache $(CURDIR)/smoke.ta; \
-	SDL_VIDEODRIVER=dummy ./tinyactor run --no-cache $(CURDIR)/test-sdl.ta
+	rm -rf lib vendor tinyactor.deps tinyactor.lock

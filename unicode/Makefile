@@ -1,9 +1,12 @@
-TINYACTOR ?= ../tinyactor
+# 纯 TA 包（无 C 构建）。测法：把自己当消费树，vendor 两份依赖再跑行为测试。
+TINYACTOR ?= ../../tinyactor
 
 .PHONY: test clean
 
 test:
-	@set -e; tmp=$$(mktemp -d /tmp/ta-unicode.XXXXXX); trap 'rm -rf "$$tmp"' EXIT; rsync -a --exclude='.git' --exclude='.tinyactor-build-*' $(TINYACTOR)/ "$$tmp/core/"; cp unicode.ta "$$tmp/core/lib/unicode.ta"; cd "$$tmp/core"; ./tinyactor run --no-cache $(CURDIR)/test-unicode.ta
+	printf 'tinyactor\t%s\ntinyactor-pkgs\t..\n' '$(TINYACTOR)' > tinyactor.deps
+	$(TINYACTOR)/tinyactor vendor
+	$(TINYACTOR)/tinyactor run test-unicode.ta
 
 clean:
-	true
+	rm -rf vendor tinyactor.deps tinyactor.lock

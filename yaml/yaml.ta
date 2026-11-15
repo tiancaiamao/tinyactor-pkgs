@@ -84,11 +84,11 @@
 // channel: ('ok . state) | ('err . msg) — state/root are NOT a Yaml, so
 // the Result ADT is only used at the fold boundary.
 
-import result
-import dict
-import option
-import list
-import strconv
+import "tinyactor:lib/result"
+import "tinyactor:lib/dict"
+import "tinyactor:lib/option"
+import "tinyactor:lib/list"
+import "tinyactor:lib/strconv"
 
 pub type Yaml {
   YStr(s)
@@ -106,15 +106,15 @@ external fn yaml.raw_parse(text) -> a
 
 // try_parse: Result(Yaml, string) — Ok(value) or Err("line L, col C: msg")
 // for syntax errors / a bare message for semantic errors (see header).
-pub fn try_parse(text : string) -> Result(Yaml, string) {
+pub fn try_parse(text : string) -> result.Result(Yaml, string) {
   match yaml.raw_parse(text) {
-    -1 -> Err("yaml parse failed: out of memory")
+    -1 -> result.Err("yaml parse failed: out of memory")
     r -> {
       if car(r) == 'ok {
         fold(cdr(r))
       } else {
         let payload = cdr(r) // (msg . (line . col))
-        Err(str.concat("line ",
+        result.Err(str.concat("line ",
         str.concat(str.from_int(car(cdr(payload))),
         str.concat(", col ",
         str.concat(str.from_int(cdr(cdr(payload))),
@@ -129,8 +129,8 @@ pub fn try_parse(text : string) -> Result(Yaml, string) {
 // same contract as json.parse.
 pub fn parse(text : string) -> Yaml {
   match try_parse(text) {
-    Ok(v) -> v
-    Err(_) -> nil
+    result.Ok(v) -> v
+    result.Err(_) -> nil
   }
 }
 
@@ -139,15 +139,15 @@ pub fn parse(text : string) -> Yaml {
 // fold: event list (from yaml.raw_parse) -> Result(Yaml, string).
 // Public: the TA half of the C/TA contract, testable against hand-built
 // event lists (see test/module/yaml-lib.ta).
-pub fn fold(evs : List(a)) -> Result(Yaml, string) {
+pub fn fold(evs : List(a)) -> result.Result(Yaml, string) {
   // state: (root . (stack . anchors)); root nil until the first value
   // completes with an empty stack.
   let st = cons(nil, cons(nil, dict.str_new()))
   let r = fold_loop(evs, st)
   if car(r) == 'ok {
-    Ok(st_root(car(cdr(r))))
+    result.Ok(st_root(car(cdr(r))))
   } else {
-    Err(cdr(r))
+    result.Err(cdr(r))
   }
 }
 
@@ -282,6 +282,12 @@ fn key_position?(stack) {
 // close the innermost frame (kind checked against the event for safety)
 // and complete the built value
 fn close_frame(st, kind) {
+  if null?(st_stack(st)) {
+    // 空栈上的 structure end：注入事件契约要 total，所以是 fold 错误不是崩溃
+    fold_err("unbalanced structure end")
+  } else { close_frame_open(st, kind) }
+}
+fn close_frame_open(st, kind) {
   let fr = car(st_stack(st))
   if fr_kind(fr) != kind {
     // cannot happen for a well-formed event stream; defensive no-op
@@ -319,14 +325,14 @@ fn scalar_ev(text, plain, anchor, st) {
         } else {
           if is_int_shape(text) {
             match strconv.str_to_int(text, 10) {
-              Ok(n) -> fold_ok(YInt(n))
-              Err(_) -> fold_err("integer out of 48-bit range")
+              result.Ok(n) -> fold_ok(YInt(n))
+              result.Err(_) -> fold_err("integer out of 48-bit range")
             }
           } else {
             if is_float_shape(text) {
               match str.parse_float(text) {
-                Some(f) -> fold_ok(YFloat(f))
-                None -> fold_err("invalid float") // unreachable: shape-checked
+                option.Some(f) -> fold_ok(YFloat(f))
+                option.None -> fold_err("invalid float") // unreachable: shape-checked
               }
             } else {
               fold_ok(YStr(text))
@@ -564,40 +570,37 @@ fn float_exp(s, i) {
 
 // ---------- public API: accessors (json v2 contract) ----------
 
-pub fn is_string(v : Yaml) -> bool {
-  if pair?(v) { car(v) == 'YStr } else { false }
+// tag/payload: constructor values are flat tuples (tag in slot 0, fields
+// after), so both reads go through tuple-ref — `pair?`/`car` do not apply
+// to them (lib/json.ta's accessor family is the same shape).
+fn tag(v) {
+  if tuple?(v) { tuple-ref(v, 0) } else { nil }
 }
 
-pub fn is_int(v : Yaml) -> bool {
-  if pair?(v) { car(v) == 'YInt } else { false }
+fn payload(v) {
+  if tuple?(v) { tuple-ref(v, 1) } else { nil }
 }
 
-pub fn is_float(v : Yaml) -> bool {
-  if pair?(v) { car(v) == 'YFloat } else { false }
-}
+pub fn is_string(v : Yaml) -> bool { tag(v) == 'YStr }
+
+pub fn is_int(v : Yaml) -> bool { tag(v) == 'YInt }
+
+pub fn is_float(v : Yaml) -> bool { tag(v) == 'YFloat }
 
 pub fn is_number(v : Yaml) -> bool {
   or(is_int(v), is_float(v))
 }
 
-pub fn is_bool(v : Yaml) -> bool {
-  if pair?(v) { car(v) == 'YBool } else { false }
-}
+pub fn is_bool(v : Yaml) -> bool { tag(v) == 'YBool }
 
 pub fn is_null(v : Yaml) -> bool {
   v == YNull
 }
 
-pub fn is_array(v : Yaml) -> bool {
-  if pair?(v) { car(v) == 'YArr } else { false }
-}
+pub fn is_array(v : Yaml) -> bool { tag(v) == 'YArr }
 
-pub fn is_object(v : Yaml) -> bool {
-  if pair?(v) { car(v) == 'YObj } else { false }
-}
+pub fn is_object(v : Yaml) -> bool { tag(v) == 'YObj }
 
-// kind: symbol describing the value ('string/'number/'bool/'null/
-// 'array/'object), or nil for a non-Yaml value.
 pub fn kind(v : Yaml) -> symbol {
   if is_string(v) {
     'string
@@ -627,29 +630,29 @@ pub fn kind(v : Yaml) -> symbol {
 }
 
 pub fn string_value(v : Yaml) -> a {
-  if is_string(v) { car(cdr(v)) } else { nil }
+  if is_string(v) { payload(v) } else { nil }
 }
 
 pub fn int_value(v : Yaml) -> a {
-  if is_int(v) { car(cdr(v)) } else { nil }
+  if is_int(v) { payload(v) } else { nil }
 }
 
 pub fn float_value(v : Yaml) -> a {
-  if is_float(v) { car(cdr(v)) } else { nil }
+  if is_float(v) { payload(v) } else { nil }
 }
 
 // number_value: int for YInt, float for YFloat.
 pub fn number_value(v : Yaml) -> a {
-  if is_number(v) { car(cdr(v)) } else { nil }
+  if is_number(v) { payload(v) } else { nil }
 }
 
 pub fn bool_value(v : Yaml) -> a {
-  if is_bool(v) { car(cdr(v)) } else { nil }
+  if is_bool(v) { payload(v) } else { nil }
 }
 
 pub fn array_size(v : Yaml) -> int {
   if is_array(v) {
-    list.length(car(cdr(v)))
+    list.length(payload(v))
   } else {
     0
   }
@@ -658,21 +661,21 @@ pub fn array_size(v : Yaml) -> int {
 // array_get: 0-based element access; out-of-range returns nil.
 pub fn array_get(v : Yaml, i : int) -> a {
   if is_array(v) {
-    list.nth(car(cdr(v)), i)
+    list.nth(payload(v), i)
   } else {
     nil
   }
 }
 
 pub fn array_items(v : Yaml) -> a {
-  if is_array(v) { car(cdr(v)) } else { nil }
+  if is_array(v) { payload(v) } else { nil }
 }
 
 // object_get: field value, or nil when missing or not an object.
 // Duplicate keys: the LAST occurrence wins.
 pub fn object_get(v : Yaml, key : string) -> a {
   if is_object(v) {
-    option.unwrap_or(nil, dict.get(car(cdr(v)), key))
+    option.unwrap_or(nil, dict.get(payload(v), key))
   } else {
     nil
   }
@@ -680,9 +683,9 @@ pub fn object_get(v : Yaml, key : string) -> a {
 
 // object_dict: the raw Dict(string -> Yaml) backing an object (nil for a
 // non-object) — O(log n) lookup and ordered fold via the dict API.
-pub fn object_dict(v : Yaml) -> Dict {
+pub fn object_dict(v : Yaml) -> dict.Dict {
   if is_object(v) {
-    car(cdr(v))
+    payload(v)
   } else {
     nil
   }
@@ -692,7 +695,7 @@ pub fn object_dict(v : Yaml) -> Dict {
 // keys collapsed (last value wins) — see the module header.
 pub fn object_fields(v : Yaml) -> List(a) {
   if is_object(v) {
-    list.map(fn(kv) { cons(YStr(car(kv)), cdr(kv)) }, dict.to_list(car(cdr(v))))
+    list.map(fn(kv) { cons(YStr(car(kv)), cdr(kv)) }, dict.to_list(payload(v)))
   } else {
     nil
   }
