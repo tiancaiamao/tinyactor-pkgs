@@ -33,11 +33,11 @@ pub fn pop_back(d : Deque(t)) -> Pop(t) {
     }
   }
 }
-pub fn peek_front(d : Deque(t)) -> Option(t) {
-  match d { DequeValue(items) -> if null?(items) { None } else { Some(car(items)) } }
+pub fn peek_front(d : Deque(t)) -> option.Option(t) {
+  match d { DequeValue(items) -> if null?(items) { option.None } else { option.Some(car(items)) } }
 }
-pub fn peek_back(d : Deque(t)) -> Option(t) {
-  match d { DequeValue(items) -> if null?(items) { None } else { Some(car(list.reverse(items))) } }
+pub fn peek_back(d : Deque(t)) -> option.Option(t) {
+  match d { DequeValue(items) -> if null?(items) { option.None } else { option.Some(car(list.reverse(items))) } }
 }
 pub fn size(d : Deque(t)) -> int { match d { DequeValue(items) -> list.length(items) } }
 pub fn is_empty(d : Deque(t)) -> bool { size(d) == 0 }

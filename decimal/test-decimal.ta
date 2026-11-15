@@ -3,7 +3,7 @@ import "tinyactor-pkgs:decimal/decimal"
 import "tinyactor:lib/os"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
-fn need(r : Result(Decimal, string)) -> Decimal { match r { Ok(x) -> x; Err(m) -> fail(m) } }
+fn need(r : Result(decimal.Decimal, string)) -> decimal.Decimal { match r { Ok(x) -> x; Err(m) -> fail(m) } }
 fn is(label : string, got : string, want : string) -> int { if got == want { print(label) } else { print(label); print(" got="); print(got); print(" want="); print(want); os.exit(1) }; 0 }
 fn main() -> int {
   // 0.1 + 0.2 is exactly 0.3 — the case binary floating point gets wrong, and the reason decimal exists.

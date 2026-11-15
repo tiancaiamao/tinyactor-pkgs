@@ -45,8 +45,8 @@ pub fn pop(q : PriorityQueue(t)) -> Pop(t) {
     }
   }
 }
-pub fn peek(q : PriorityQueue(t)) -> Option(t) {
-  match q { QueueValue(MkQueue(_, items)) -> if null?(items) { None } else { Some(car(items)) } }
+pub fn peek(q : PriorityQueue(t)) -> option.Option(t) {
+  match q { QueueValue(MkQueue(_, items)) -> if null?(items) { option.None } else { option.Some(car(items)) } }
 }
 pub fn size(q : PriorityQueue(t)) -> int { match q { QueueValue(MkQueue(_, items)) -> list.length(items) } }
 pub fn is_empty(q : PriorityQueue(t)) -> bool { size(q) == 0 }

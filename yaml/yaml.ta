@@ -106,15 +106,15 @@ external fn yaml.raw_parse(text) -> a
 
 // try_parse: Result(Yaml, string) — Ok(value) or Err("line L, col C: msg")
 // for syntax errors / a bare message for semantic errors (see header).
-pub fn try_parse(text : string) -> Result(Yaml, string) {
+pub fn try_parse(text : string) -> result.Result(Yaml, string) {
   match yaml.raw_parse(text) {
-    -1 -> Err("yaml parse failed: out of memory")
+    -1 -> result.Err("yaml parse failed: out of memory")
     r -> {
       if car(r) == 'ok {
         fold(cdr(r))
       } else {
         let payload = cdr(r) // (msg . (line . col))
-        Err(str.concat("line ",
+        result.Err(str.concat("line ",
         str.concat(str.from_int(car(cdr(payload))),
         str.concat(", col ",
         str.concat(str.from_int(cdr(cdr(payload))),
@@ -129,8 +129,8 @@ pub fn try_parse(text : string) -> Result(Yaml, string) {
 // same contract as json.parse.
 pub fn parse(text : string) -> Yaml {
   match try_parse(text) {
-    Ok(v) -> v
-    Err(_) -> nil
+    result.Ok(v) -> v
+    result.Err(_) -> nil
   }
 }
 
@@ -139,15 +139,15 @@ pub fn parse(text : string) -> Yaml {
 // fold: event list (from yaml.raw_parse) -> Result(Yaml, string).
 // Public: the TA half of the C/TA contract, testable against hand-built
 // event lists (see test/module/yaml-lib.ta).
-pub fn fold(evs : List(a)) -> Result(Yaml, string) {
+pub fn fold(evs : List(a)) -> result.Result(Yaml, string) {
   // state: (root . (stack . anchors)); root nil until the first value
   // completes with an empty stack.
   let st = cons(nil, cons(nil, dict.str_new()))
   let r = fold_loop(evs, st)
   if car(r) == 'ok {
-    Ok(st_root(car(cdr(r))))
+    result.Ok(st_root(car(cdr(r))))
   } else {
-    Err(cdr(r))
+    result.Err(cdr(r))
   }
 }
 
@@ -325,14 +325,14 @@ fn scalar_ev(text, plain, anchor, st) {
         } else {
           if is_int_shape(text) {
             match strconv.str_to_int(text, 10) {
-              Ok(n) -> fold_ok(YInt(n))
-              Err(_) -> fold_err("integer out of 48-bit range")
+              result.Ok(n) -> fold_ok(YInt(n))
+              result.Err(_) -> fold_err("integer out of 48-bit range")
             }
           } else {
             if is_float_shape(text) {
               match str.parse_float(text) {
-                Some(f) -> fold_ok(YFloat(f))
-                None -> fold_err("invalid float") // unreachable: shape-checked
+                option.Some(f) -> fold_ok(YFloat(f))
+                option.None -> fold_err("invalid float") // unreachable: shape-checked
               }
             } else {
               fold_ok(YStr(text))
@@ -683,7 +683,7 @@ pub fn object_get(v : Yaml, key : string) -> a {
 
 // object_dict: the raw Dict(string -> Yaml) backing an object (nil for a
 // non-object) — O(log n) lookup and ordered fold via the dict API.
-pub fn object_dict(v : Yaml) -> Dict {
+pub fn object_dict(v : Yaml) -> dict.Dict {
   if is_object(v) {
     payload(v)
   } else {

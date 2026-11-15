@@ -2,7 +2,7 @@
 import "tinyactor-pkgs:rational/rational"
 import "tinyactor:lib/os"
 fn fail(message : string) -> int { print(message); os.exit(1) }
-fn need(r : Result(Rational, string)) -> Rational { match r { Ok(x) -> x; Err(m) -> fail(m) } }
+fn need(r : Result(rational.Rational, string)) -> rational.Rational { match r { Ok(x) -> x; Err(m) -> fail(m) } }
 fn is(label : string, got : string, want : string) -> int { if got == want { print(label) } else { print(label); print(" got="); print(got); print(" want="); print(want); os.exit(1) }; 0 }
 fn main() -> int {
     match rational.make("6", "8") {

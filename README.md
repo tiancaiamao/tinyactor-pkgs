@@ -30,3 +30,8 @@ repo, `TINYACTOR ?= ../../tinyactor`), runs `tinyactor vendor`, then runs the
 package test from the package directory (C packages build `lib/<mod>.<ext>`
 there, which is where the runtime looks for it). No copying into a core
 checkout, no `/tmp` core copies.
+
+Types and constructors are module members exactly like functions, so a package
+writes them with the import reference: `result.Result(int, string)`,
+`result.Ok(v)`, `option.Some(x)`. Bare names are only the package's *own*
+declarations and the language primitives (`List`, `Int`, …). No prelude.

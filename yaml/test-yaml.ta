@@ -95,8 +95,8 @@ fn show_fields(fs) {
 // unwrap a parse result to its rendered form (sentinel on Err)
 fn y_of(r, sentinel) {
   match r {
-    Ok(v) -> show(v)
-    Err(e) -> str.concat("ERR: ", e)
+    result.Ok(v) -> show(v)
+    result.Err(e) -> str.concat("ERR: ", e)
   }
 }
 
@@ -162,8 +162,8 @@ fn main() {
     y_of(yaml.try_parse("a: 1\na: 2\n"), "E"), "{a=i:2,{}}")
   let ok28 = test.eq("object_fields ascending key order",
     match yaml.try_parse("c: 3\na: 1\nb: 2\n") {
-      Ok(v) -> show_fields(yaml.object_fields(v))
-      Err(_) -> "ERR"
+      result.Ok(v) -> show_fields(yaml.object_fields(v))
+      result.Err(_) -> "ERR"
     },
     "{a=i:1,{b=i:2,{c=i:3,{}}}}")
 
@@ -192,8 +192,8 @@ fn main() {
 
   // ---------- accessor family (json v2 contract) ----------
   let doc = match yaml.try_parse("name: pi\nval: 3.14\non: yes\nnothing: ~\nlist: [1]\n") {
-    Ok(v) -> v
-    Err(_) -> YNull
+    result.Ok(v) -> v
+    result.Err(_) -> yaml.YNull
   }
   let ok36 = test.is_true("kind object", yaml.kind(doc) == 'object)
   let ok37 = test.eq("is_* family",

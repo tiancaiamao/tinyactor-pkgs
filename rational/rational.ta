@@ -9,15 +9,15 @@
 import "tinyactor:lib/result"
 import "tinyactor-pkgs:num_internal/num_internal"
 pub type Rational { R(int, string, string) }
-pub fn make(num : string, den : string) -> Result(Rational, string) {
-  if valid_integer(num) == false || valid_integer(den) == false { Err("invalid rational") } else {
+pub fn make(num : string, den : string) -> result.Result(Rational, string) {
+  if valid_integer(num) == false || valid_integer(den) == false { result.Err("invalid rational") } else {
     let ns = sign_of(num)
     let ds = sign_of(den)
     let n = magnitude(num)
     let d = magnitude(den)
-    if d == "0" { Err("zero denominator") } else {
+    if d == "0" { result.Err("zero denominator") } else {
       let g = gcd(n, d)
-      Ok(R(if ns == ds { 1 } else { 0 - 1 }, num_internal.div(n, g), num_internal.div(d, g)))
+      result.Ok(R(if ns == ds { 1 } else { 0 - 1 }, num_internal.div(n, g), num_internal.div(d, g)))
     }
   }
 }
@@ -39,6 +39,6 @@ pub fn add(a : Rational, b : Rational) -> Rational { match a { R(sa, an, ad) -> 
 fn normalize(s : int, n : string, d : string) -> Rational { if n == "0" { R(1, "0", "1") } else { let g = gcd(n, d); R(s, num_internal.div(n, g), num_internal.div(d, g)) } }
 pub fn sub(a : Rational, b : Rational) -> Rational { match b { R(s, n, d) -> add(a, R(0 - s, n, d)) } }
 pub fn mul(a : Rational, b : Rational) -> Rational { match a { R(sa, an, ad) -> match b { R(sb, bn, bd) -> normalize(sa * sb, num_internal.mul(an, bn), num_internal.mul(ad, bd)) } } }
-pub fn div(a : Rational, b : Rational) -> Result(Rational, string) { match b { R(_, "0", _) -> Err("division by zero"); R(sb, bn, bd) -> match a { R(sa, an, ad) -> Ok(normalize(sa * sb, num_internal.mul(an, bd), num_internal.mul(ad, bn))) } } }
+pub fn div(a : Rational, b : Rational) -> result.Result(Rational, string) { match b { R(_, "0", _) -> result.Err("division by zero"); R(sb, bn, bd) -> match a { R(sa, an, ad) -> result.Ok(normalize(sa * sb, num_internal.mul(an, bd), num_internal.mul(ad, bn))) } } }
 pub fn compare(a : Rational, b : Rational) -> int { match a { R(sa, an, ad) -> match b { R(sb, bn, bd) -> { if sa != sb { if sa < sb { -1 } else { 1 } } else { let c = num_internal.cmp(num_internal.mul(an, bd), num_internal.mul(bn, ad)); if sa < 0 { 0 - c } else { c } } } } } }
 pub fn to_string(a : Rational) -> string { match a { R(s, n, d) -> str.concat(str.concat(if s < 0 && n != "0" { "-" } else { "" }, n), str.concat("/", d)) } }
