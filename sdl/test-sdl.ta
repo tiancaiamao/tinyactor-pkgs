@@ -1,35 +1,37 @@
 import "tinyactor-pkgs:sdl/sdl"
 import "tinyactor:lib/os"
+import "tinyactor:lib/result"
+import "tinyactor:lib/option"
 
 fn fail(message) { print(message); os.exit(1) }
 fn main() {
   match sdl.init() {
-        Err(_) -> fail("FAIL init")
-    Ok(_) -> 0
+        result.Err(_) -> fail("FAIL init")
+    result.Ok(_) -> 0
   }
   match sdl.create_window("tinyactor-sdl-test", 32, 32) {
-        Err(_) -> fail("FAIL create window")
-    Ok(window) -> {
+        result.Err(_) -> fail("FAIL create window")
+    result.Ok(window) -> {
       match sdl.poll_event() {
-        None -> print("PASS empty event queue")
-        Some(_) -> print("PASS event queue")
+        option.None -> print("PASS empty event queue")
+        option.Some(_) -> print("PASS event queue")
       }
-      match sdl.delay(2) { Ok(_) -> print("PASS timer delay"); _ -> fail("FAIL delay") }
+      match sdl.delay(2) { result.Ok(_) -> print("PASS timer delay"); _ -> fail("FAIL delay") }
             match sdl.destroy_window(window) {
-        Err(_) -> fail("FAIL destroy")
-        Ok(_) -> print("PASS destroy")
+        result.Err(_) -> fail("FAIL destroy")
+        result.Ok(_) -> print("PASS destroy")
       }
       match sdl.destroy_window(window) {
-        Err(_) -> print("PASS closed window rejected")
+        result.Err(_) -> print("PASS closed window rejected")
         _ -> fail("FAIL closed window accepted")
       }
 
     }
   }
   match sdl.delay(-1) {
-    Err(_) -> print("PASS invalid delay rejected")
+    result.Err(_) -> print("PASS invalid delay rejected")
     _ -> fail("FAIL invalid delay accepted")
   }
-  match sdl.quit() { Ok(_) -> print("PASS SDL quit"); _ -> fail("FAIL quit") }
+  match sdl.quit() { result.Ok(_) -> print("PASS SDL quit"); _ -> fail("FAIL quit") }
   print("PASS sdl tests")
 }

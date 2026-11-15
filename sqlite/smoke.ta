@@ -1,24 +1,25 @@
 import "tinyactor-pkgs:sqlite/sqlite"
 import "tinyactor:lib/os"
+import "tinyactor:lib/result"
 
 fn fail(message) { print(message); os.exit(1) }
 fn main() {
   match sqlite.open(":memory:") {
-    Err(_) -> fail("FAIL open memory")
-    Ok(db) -> {
+    result.Err(_) -> fail("FAIL open memory")
+    result.Ok(db) -> {
       match sqlite.exec(db, "create table t (id integer, name text)") {
-        Err(_) -> fail("FAIL create")
-        Ok(_) -> 0
+        result.Err(_) -> fail("FAIL create")
+        result.Ok(_) -> 0
       }
       match sqlite.exec(db, "insert into t values (7, 'Ada')") {
-        Err(_) -> fail("FAIL insert")
-        Ok(_) -> 0
+        result.Err(_) -> fail("FAIL insert")
+        result.Ok(_) -> 0
       }
       match sqlite.prepare(db, "select id, name from t") {
-        Err(_) -> fail("FAIL prepare")
-        Ok(stmt) -> {
+        result.Err(_) -> fail("FAIL prepare")
+        result.Ok(stmt) -> {
           match sqlite.next(stmt) {
-            Ok(true) -> {
+            result.Ok(true) -> {
                             if sqlite.column_text(stmt, 0) == "7" {
                 if sqlite.column_text(stmt, 1) == "Ada" {
                                     let values = sqlite.row(stmt)

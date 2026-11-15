@@ -3,6 +3,7 @@
 import "tinyactor:lib/str"
 import "tinyactor:lib/list"
 import "tinyactor:lib/dict"
+import "tinyactor:lib/option"
 
 pub type ParseResult { Parsed(ast); Invalid(reason) }
 pub type Ast { Alt(left, right); Seq(left, right); Star(node); Plus(node); Optional(node); Lit(ch); Class(ranges, negated); Any(marker); Begin(marker); End(marker); Group(node); EpsilonNode(marker) }
@@ -134,8 +135,8 @@ fn close(todo, eps, trans, text, pos, seen, acc) {
   if null?(todo) { acc } else {
     let id = car(todo)
     if dict.has_key(seen, id) { close(cdr(todo), eps, trans, text, pos, seen, acc) } else {
-      let more = match dict.get(eps, id) { Some(xs) -> xs; None -> nil }
-      let edge_tos = match dict.get(trans, id) { Some(Edge(Begin(_), target)) -> if pos == 0 { cons(target, nil) } else { nil }; Some(Edge(End(_), target)) -> if pos == str.length(text) { cons(target, nil) } else { nil }; _ -> nil }
+      let more = match dict.get(eps, id) { option.Some(xs) -> xs; option.None -> nil }
+      let edge_tos = match dict.get(trans, id) { option.Some(Edge(Begin(_), target)) -> if pos == 0 { cons(target, nil) } else { nil }; option.Some(Edge(End(_), target)) -> if pos == str.length(text) { cons(target, nil) } else { nil }; _ -> nil }
       close(list.append(cdr(todo), list.append(more, edge_tos)), eps, trans, text, pos, dict.insert(seen, id, true), cons(id, acc))
     }
   }
@@ -144,8 +145,8 @@ fn step(active, trans, ch, pos, acc) {
   if null?(active) { list.reverse(acc) } else {
     let id = car(active)
     let next = match dict.get(trans, id) {
-      Some(Edge(matcher, target)) -> if accepts(matcher, ch, pos) { cons(target, acc) } else { acc }
-      None -> acc
+      option.Some(Edge(matcher, target)) -> if accepts(matcher, ch, pos) { cons(target, acc) } else { acc }
+      option.None -> acc
     }
     step(cdr(active), trans, ch, pos, next)
   }

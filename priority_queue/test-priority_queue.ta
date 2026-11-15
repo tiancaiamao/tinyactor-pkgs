@@ -1,5 +1,6 @@
 import "tinyactor-pkgs:priority_queue/priority_queue"
 import "tinyactor:lib/os"
+import "tinyactor:lib/option"
 
 fn fail(message : string) -> int { print(message); os.exit(1) }
 fn main() -> int {
@@ -8,7 +9,7 @@ fn main() -> int {
   match priority_queue.pop(q0) { priority_queue.Empty -> print("PASS priority empty pop"); _ -> fail("FAIL priority empty pop") }
     let q1 = priority_queue.push(priority_queue.push(priority_queue.push(q0, 4), 1), 3)
   if priority_queue.size(q1) != 3 { fail("FAIL priority size") }
-  match priority_queue.peek(q1) { Some(1) -> print("PASS priority peek"); _ -> fail("FAIL priority peek") }
+  match priority_queue.peek(q1) { option.Some(1) -> print("PASS priority peek"); _ -> fail("FAIL priority peek") }
   match priority_queue.pop(q1) {
     priority_queue.Item(v1, q2) -> {
       if v1 != 1 { fail("FAIL priority ascending first") }
